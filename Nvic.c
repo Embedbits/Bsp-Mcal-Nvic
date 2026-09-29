@@ -49,6 +49,44 @@ static void Nvic_SysTick_DefaultHandler( void );
 /** Value of patch version of SW module */
 #define NVIC_PATCH_VERSION           ( 0u )
 
+
+/** Shift of peripheral IRQ number to index of 32-bit NVIC register (ISER, ICER, ISPR, ICPR) */
+#define NVIC_IRQ_REG_IDX_SHIFT       ( 5u )
+
+/** Mask of peripheral IRQ bit position within 32-bit NVIC register */
+#define NVIC_IRQ_REG_BIT_MASK        ( 0x1Fu )
+
+/** Single IRQ bit in NVIC register */
+#define NVIC_IRQ_REG_BIT             ( 1u )
+
+/** Width of priority field in NVIC IPR / SCB SHPR registers */
+#define NVIC_PRIO_REG_BITS           ( 8u )
+
+/** Implemented priority bits are the most significant bits of priority field */
+#define NVIC_PRIO_SHIFT              ( NVIC_PRIO_REG_BITS - NVIC_PRIO_BITS )
+
+/** Highest priority value (lowest urgency) supported by implemented priority bits */
+#define NVIC_PRIO_MAX                ( ( 1u << NVIC_PRIO_BITS ) - 1u )
+
+/** Core IRQ enumeration value is exception number decremented by 1 (see \ref nvic_CoreIrqList_t) */
+#define NVIC_CORE_IRQ_EXC_OFFSET     ( 1u )
+
+/** Exception number of the first entry of SCB SHPR registers (MemManage fault) */
+#define NVIC_SHPR_FIRST_EXC          ( 4u )
+
+/** Full access value of coprocessor access field (2 bits per coprocessor) */
+#define NVIC_CPACR_FULL_ACCESS       ( 3u )
+
+/** Position of CP10 access field in SCB CPACR (FPU) */
+#define NVIC_CPACR_CP10_POS          ( 20u )
+
+/** Position of CP11 access field in SCB CPACR (FPU) */
+#define NVIC_CPACR_CP11_POS          ( 22u )
+
+/** SCB CPACR value enabling full access to FPU (CP10 and CP11) */
+#define NVIC_CPACR_FPU_FULL_ACCESS   ( ( NVIC_CPACR_FULL_ACCESS << NVIC_CPACR_CP10_POS ) | \
+                                       ( NVIC_CPACR_FULL_ACCESS << NVIC_CPACR_CP11_POS ) )
+
 /* =============================== MACROS =================================== */
 
 /* ========================== EXPORTED VARIABLES ============================ */
@@ -148,9 +186,11 @@ void Nvic_Task( void )
 
 
 /**
- * \brief Returns address of StackPointer.
+ * \brief Returns address of the interrupt vector table in RAM.
  *
- * \return Address of stack pointer as uint32_t
+ * The first entry of the table holds the initial stack pointer.
+ *
+ * \return Address of the RAM vector table (value loaded into SCB VTOR).
  */
 uint32_t Nvic_Get_StackPointerAddr( void )
 {
@@ -163,8 +203,8 @@ uint32_t Nvic_Get_StackPointerAddr( void )
  *
  * User can configure custom handler for required interrupt vector.
  *
- * \param[in] irqId      : Interrupt vector identification
- * \param[in] irqHandler : Interrupt vector callback routine pointer
+ * \param irqId      [in]: Interrupt vector identification
+ * \param irqHandler [in]: Interrupt vector callback routine pointer
  *
  * \return Processing request state. If request executed successfully returns "OK",
  *         otherwise returns error.
@@ -194,8 +234,8 @@ nvic_RequestState_t Nvic_Set_PeriphIrq_Handler( nvic_PeriphIrqList_t irqId, cons
  *
  * User can read configured handler address for required interrupt vector.
  *
- * \param[in]  irqId      : Interrupt vector identification
- * \param[out] irqHandler : Interrupt vector callback routine address
+ * \param irqId       [in]: Interrupt vector identification
+ * \param irqHandler [out]: Pointer to store interrupt vector callback routine address. Must not be NULL.
  *
  * \return Processing request state. If request executed successfully returns "OK",
  *         otherwise returns error.
@@ -204,7 +244,8 @@ nvic_RequestState_t Nvic_Get_PeriphIrq_Handler( nvic_PeriphIrqList_t irqId, nvic
 {
     nvic_RequestState_t returnState = NVIC_REQUEST_ERROR;
 
-    if( NVIC_PERIPH_IRQ_SIZE > irqId )
+    if( ( NVIC_PERIPH_IRQ_SIZE > irqId      ) &&
+        ( NVIC_NULL_PTR       != irqHandler )    )
     {
         *irqHandler = nvic_IrqVectTable.PeriphIrq[ irqId ];
 
@@ -224,8 +265,8 @@ nvic_RequestState_t Nvic_Get_PeriphIrq_Handler( nvic_PeriphIrqList_t irqId, nvic
  *
  * User can configure priority for required interrupt vector.
  *
- * \param[in] irqId   : Interrupt vector identification
- * \param[in] irqPrio : Interrupt vector priority value
+ * \param irqId   [in]: Interrupt vector identification
+ * \param irqPrio [in]: Interrupt vector priority value (0 - \ref NVIC_PRIO_MAX)
  *
  * \return Processing request state. If request executed successfully returns "OK",
  *         otherwise returns error.
@@ -234,9 +275,10 @@ nvic_RequestState_t Nvic_Set_PeriphIrq_Prio( nvic_PeriphIrqList_t irqId, nvic_Ir
 {
     nvic_RequestState_t returnState = NVIC_REQUEST_ERROR;
 
-    if( NVIC_PERIPH_IRQ_SIZE > irqId )
+    if( ( NVIC_PERIPH_IRQ_SIZE > irqId   ) &&
+        ( NVIC_PRIO_MAX       >= irqPrio )    )
     {
-        NVIC->IPR[((uint32_t)irqId)] = (uint8_t)((irqPrio << (8u - NVIC_PRIO_BITS)) & (uint32_t)0xFFUL);
+        NVIC->IPR[ (uint32_t)irqId ] = (uint8_t)( irqPrio << NVIC_PRIO_SHIFT );
 
         returnState = NVIC_REQUEST_OK;
     }
@@ -254,8 +296,8 @@ nvic_RequestState_t Nvic_Set_PeriphIrq_Prio( nvic_PeriphIrqList_t irqId, nvic_Ir
  *
  * User can read configured priority for required interrupt vector.
  *
- * \param[in]  irqId   : Interrupt vector identification
- * \param[out] irqPrio : Interrupt vector priority
+ * \param irqId    [in]: Interrupt vector identification
+ * \param irqPrio [out]: Pointer to store interrupt vector priority. Must not be NULL.
  *
  * \return Processing request state. If request executed successfully returns "OK",
  *         otherwise returns error.
@@ -264,9 +306,10 @@ nvic_RequestState_t Nvic_Get_PeriphIrq_Prio( nvic_PeriphIrqList_t irqId, nvic_Ir
 {
     nvic_RequestState_t returnState = NVIC_REQUEST_ERROR;
 
-    if( NVIC_PERIPH_IRQ_SIZE > irqId )
+    if( ( NVIC_PERIPH_IRQ_SIZE > irqId   ) &&
+        ( NVIC_NULL_PTR       != irqPrio )    )
     {
-        *irqPrio = (((uint32_t)NVIC->IPR[((uint32_t)irqId)] >> (8u - NVIC_PRIO_BITS)));
+        *irqPrio = (nvic_IrqPrio_t)( (uint32_t)NVIC->IPR[ (uint32_t)irqId ] >> NVIC_PRIO_SHIFT );
 
         returnState = NVIC_REQUEST_OK;
     }
@@ -284,7 +327,7 @@ nvic_RequestState_t Nvic_Get_PeriphIrq_Prio( nvic_PeriphIrqList_t irqId, nvic_Ir
  *
  * User can activate interrupt vector through this routine.
  *
- * \param[in] irqId : Interrupt vector identification
+ * \param irqId [in]: Interrupt vector identification
  *
  * \return Processing request state. If request executed successfully returns "OK",
  *         otherwise returns error.
@@ -295,10 +338,9 @@ nvic_RequestState_t Nvic_Set_PeriphIrq_Active( nvic_PeriphIrqList_t irqId )
 
     if( NVIC_PERIPH_IRQ_SIZE > irqId )
     {
-        /* Down-shift bits of 31 to get interrupt enable register offset */
-        uint32_t irqEnableRegOffset = ( (uint32_t) irqId ) >> 5UL;
-
-        uint32_t irqActivationMask = ( uint32_t )( 1u << ( ( ( uint32_t ) irqId ) & 0x1FUL ) );
+        /* Index of interrupt enable register and bit of the interrupt within it */
+        const uint32_t irqEnableRegOffset = ( (uint32_t)irqId ) >> NVIC_IRQ_REG_IDX_SHIFT;
+        const uint32_t irqActivationMask  = NVIC_IRQ_REG_BIT << ( ( (uint32_t)irqId ) & NVIC_IRQ_REG_BIT_MASK );
 
         __COMPILER_BARRIER();
 
@@ -322,7 +364,7 @@ nvic_RequestState_t Nvic_Set_PeriphIrq_Active( nvic_PeriphIrqList_t irqId )
  *
  * User can de-activate interrupt vector through this routine.
  *
- * \param[in] irqId : Interrupt vector identification
+ * \param irqId [in]: Interrupt vector identification
  *
  * \return Processing request state. If request executed successfully returns "OK",
  *         otherwise returns error.
@@ -333,10 +375,9 @@ nvic_RequestState_t Nvic_Set_PeriphIrq_Inactive( nvic_PeriphIrqList_t irqId )
 
     if( NVIC_PERIPH_IRQ_SIZE > irqId )
     {
-        /* Down-shift bits of 31 to get interrupt enable register offset */
-        uint32_t irqDisableRegOffset = ( (uint32_t) irqId ) >> 5u;
-
-        uint32_t irqDeactivationMask = ( uint32_t )( 1u << ( ( ( uint32_t ) irqId ) & 0x1 ) );
+        /* Index of interrupt clear-enable register and bit of the interrupt within it */
+        const uint32_t irqDisableRegOffset = ( (uint32_t)irqId ) >> NVIC_IRQ_REG_IDX_SHIFT;
+        const uint32_t irqDeactivationMask = NVIC_IRQ_REG_BIT << ( ( (uint32_t)irqId ) & NVIC_IRQ_REG_BIT_MASK );
 
         NVIC->ICER[ irqDisableRegOffset ] = irqDeactivationMask;
 
@@ -359,10 +400,11 @@ nvic_RequestState_t Nvic_Set_PeriphIrq_Inactive( nvic_PeriphIrqList_t irqId )
  *
  * User can activate or deactivate pending state of interrupt vector.
  *
- * \param[in] irqId   : Interrupt vector identification
- * \param[in] irqFlag : Interrupt required pending status
+ * \param irqId   [in]: Interrupt vector identification
+ * \param irqFlag [in]: Interrupt required pending status
  *
- * \return State of storing interrupt handler pointer into interrupt vector table
+ * \return Processing request state. If request executed successfully returns "OK",
+ *         otherwise returns error.
  */
 nvic_RequestState_t Nvic_Set_PeriphIrq_Pending( nvic_PeriphIrqList_t irqId, nvic_IrqFlag_t irqFlag )
 {
@@ -370,15 +412,18 @@ nvic_RequestState_t Nvic_Set_PeriphIrq_Pending( nvic_PeriphIrqList_t irqId, nvic
 
     if( NVIC_PERIPH_IRQ_SIZE > irqId )
     {
+        const uint32_t irqRegOffset = ( (uint32_t)irqId ) >> NVIC_IRQ_REG_IDX_SHIFT;
+        const uint32_t irqMask      = NVIC_IRQ_REG_BIT << ( ( (uint32_t)irqId ) & NVIC_IRQ_REG_BIT_MASK );
+
         if( NVIC_IRQ_INACTIVE != irqFlag )
         {
             /* Set interrupt vector pending active */
-            NVIC->ISPR[(((uint32_t)irqId) >> 5UL)] = (uint32_t)(1UL << (((uint32_t)irqId) & 0x1FUL));
+            NVIC->ISPR[ irqRegOffset ] = irqMask;
         }
         else
         {
             /* Clear pending interrupt vector */
-            NVIC->ICPR[(((uint32_t)irqId) >> 5UL)] = (uint32_t)(1UL << (((uint32_t)irqId) & 0x1FUL));
+            NVIC->ICPR[ irqRegOffset ] = irqMask;
         }
 
         returnState = NVIC_REQUEST_OK;
@@ -397,8 +442,8 @@ nvic_RequestState_t Nvic_Set_PeriphIrq_Pending( nvic_PeriphIrqList_t irqId, nvic
  *
  * User can read pending state of interrupt vector.
  *
- * \param[in]  irqId   : Interrupt vector identification
- * \param[out] irqFlag : Interrupt pending status
+ * \param irqId    [in]: Interrupt vector identification
+ * \param irqFlag [out]: Pointer to store interrupt pending status. Must not be NULL.
  *
  * \return Processing request state. If request executed successfully returns "OK",
  *         otherwise returns error.
@@ -407,9 +452,12 @@ nvic_RequestState_t Nvic_Get_PeriphIrq_Pending( nvic_PeriphIrqList_t irqId, nvic
 {
     nvic_RequestState_t returnState = NVIC_REQUEST_ERROR;
 
-    if( NVIC_PERIPH_IRQ_SIZE > irqId )
+    if( ( NVIC_PERIPH_IRQ_SIZE > irqId   ) &&
+        ( NVIC_NULL_PTR       != irqFlag )    )
     {
-        uint32_t regValue = NVIC->ISPR[(((uint32_t)irqId) >> 5UL)] & (1UL << (((uint32_t)irqId) & 0x1FUL));
+        const uint32_t irqRegOffset = ( (uint32_t)irqId ) >> NVIC_IRQ_REG_IDX_SHIFT;
+        const uint32_t irqMask      = NVIC_IRQ_REG_BIT << ( ( (uint32_t)irqId ) & NVIC_IRQ_REG_BIT_MASK );
+        const uint32_t regValue     = NVIC->ISPR[ irqRegOffset ] & irqMask;
 
         if( 0u != regValue )
         {
@@ -436,8 +484,8 @@ nvic_RequestState_t Nvic_Get_PeriphIrq_Pending( nvic_PeriphIrqList_t irqId, nvic
  *
  * User can configure custom handler for required core interrupt vector.
  *
- * \param[in] irqId      : Interrupt vector identification
- * \param[in] irqHandler : Interrupt vector callback routine pointer
+ * \param irqId      [in]: Interrupt vector identification
+ * \param irqHandler [in]: Interrupt vector callback routine pointer
  *
  * \return Processing request state. If request executed successfully returns "OK",
  *         otherwise returns error.
@@ -467,8 +515,8 @@ nvic_RequestState_t Nvic_Set_CoreIrq_Handler( nvic_CoreIrqList_t irqId, const nv
  *
  * User can read configured handler address for required core interrupt vector.
  *
- * \param[in]  irqId      : Interrupt vector identification
- * \param[out] irqHandler : Interrupt vector callback routine address
+ * \param irqId       [in]: Interrupt vector identification
+ * \param irqHandler [out]: Pointer to store interrupt vector callback routine address. Must not be NULL.
  *
  * \return Processing request state. If request executed successfully returns "OK",
  *         otherwise returns error.
@@ -477,7 +525,8 @@ nvic_RequestState_t Nvic_Get_CoreIrq_Handler( nvic_CoreIrqList_t irqId, nvic_Isr
 {
     nvic_RequestState_t returnState = NVIC_REQUEST_ERROR;
 
-    if( NVIC_CORE_IRQ_SIZE > irqId )
+    if( ( NVIC_CORE_IRQ_SIZE > irqId      ) &&
+        ( NVIC_NULL_PTR     != irqHandler )    )
     {
         *irqHandler = nvic_IrqVectTable.CoreIrq[ irqId ];
 
@@ -497,8 +546,12 @@ nvic_RequestState_t Nvic_Get_CoreIrq_Handler( nvic_CoreIrqList_t irqId, nvic_Isr
  *
  * User can configure priority for required core interrupt vector.
  *
- * \param[in] irqId   : Interrupt vector identification
- * \param[in] irqPrio : Interrupt vector priority value
+ * \note  Only exceptions with configurable priority are accepted
+ *        (\ref NVIC_CORE_IRQ_MEMFAULT - \ref NVIC_CORE_IRQ_SYSTICK). Reset, NMI
+ *        and HardFault have fixed priority and return error.
+ *
+ * \param irqId   [in]: Interrupt vector identification
+ * \param irqPrio [in]: Interrupt vector priority value (0 - \ref NVIC_PRIO_MAX)
  *
  * \return Processing request state. If request executed successfully returns "OK",
  *         otherwise returns error.
@@ -507,11 +560,14 @@ nvic_RequestState_t Nvic_Set_CoreIrq_Prio( nvic_CoreIrqList_t irqId, nvic_IrqPri
 {
     nvic_RequestState_t returnState = NVIC_REQUEST_ERROR;
 
-    if( NVIC_CORE_IRQ_SIZE > irqId )
+    /* Reset, NMI and HardFault have fixed priority - not present in SHPR registers */
+    if( ( NVIC_CORE_IRQ_SIZE     > irqId   ) &&
+        ( NVIC_CORE_IRQ_MEMFAULT <= irqId  ) &&
+        ( NVIC_PRIO_MAX         >= irqPrio )    )
     {
-        irqId += 1u;
+        const uint32_t shprIdx = ( (uint32_t)irqId + NVIC_CORE_IRQ_EXC_OFFSET ) - NVIC_SHPR_FIRST_EXC;
 
-        SCB->SHPR[(((uint32_t)irqId) & 0xFUL)-4UL] = (uint8_t)((irqPrio << (8U - NVIC_PRIO_BITS)) & (uint32_t)0xFFUL);
+        SCB->SHPR[ shprIdx ] = (uint8_t)( irqPrio << NVIC_PRIO_SHIFT );
 
         returnState = NVIC_REQUEST_OK;
     }
@@ -529,8 +585,11 @@ nvic_RequestState_t Nvic_Set_CoreIrq_Prio( nvic_CoreIrqList_t irqId, nvic_IrqPri
  *
  * User can read configured priority for required core interrupt vector.
  *
- * \param[in]  irqId   : Interrupt vector identification
- * \param[out] irqPrio : Interrupt vector priority
+ * \note  Only exceptions with configurable priority are accepted
+ *        (\ref NVIC_CORE_IRQ_MEMFAULT - \ref NVIC_CORE_IRQ_SYSTICK).
+ *
+ * \param irqId    [in]: Interrupt vector identification
+ * \param irqPrio [out]: Pointer to store interrupt vector priority. Must not be NULL.
  *
  * \return Processing request state. If request executed successfully returns "OK",
  *         otherwise returns error.
@@ -539,9 +598,14 @@ nvic_RequestState_t Nvic_Get_CoreIrq_Prio( nvic_CoreIrqList_t irqId, nvic_IrqPri
 {
     nvic_RequestState_t returnState = NVIC_REQUEST_ERROR;
 
-    if( NVIC_CORE_IRQ_SIZE > irqId )
+    /* Reset, NMI and HardFault have fixed priority - not present in SHPR registers */
+    if( ( NVIC_CORE_IRQ_SIZE     > irqId   ) &&
+        ( NVIC_CORE_IRQ_MEMFAULT <= irqId  ) &&
+        ( NVIC_NULL_PTR         != irqPrio )    )
     {
-        *irqPrio = (uint32_t)SCB->SHPR[(((uint32_t)irqId) & 0xFUL)-4UL] >> (8U - NVIC_PRIO_BITS);
+        const uint32_t shprIdx = ( (uint32_t)irqId + NVIC_CORE_IRQ_EXC_OFFSET ) - NVIC_SHPR_FIRST_EXC;
+
+        *irqPrio = (nvic_IrqPrio_t)( (uint32_t)SCB->SHPR[ shprIdx ] >> NVIC_PRIO_SHIFT );
 
         returnState = NVIC_REQUEST_OK;
     }
@@ -560,7 +624,7 @@ nvic_RequestState_t Nvic_Get_CoreIrq_Prio( nvic_CoreIrqList_t irqId, nvic_IrqPri
  * All interrupt vectors are routed to default handler which is by default
  * represented by endless loop. User can assign custom default handler.
  *
- * \param[in] defaultHandler : Pointer to user default handler
+ * \param defaultHandler [in]: Pointer to user default handler
  *
  * \return Assigning state of setter.
  */
@@ -597,7 +661,7 @@ void SystemInit(void)
 
 /* FPU settings ------------------------------------------------------------*/
 #if (__FPU_PRESENT == 1) && (__FPU_USED == 1)
-    SCB->CPACR |= ((3UL << 20U)|(3UL << 22U));  /* set CP10 and CP11 Full Access */
+    SCB->CPACR |= NVIC_CPACR_FPU_FULL_ACCESS;  /* set CP10 and CP11 Full Access */
 #endif
 }
 
