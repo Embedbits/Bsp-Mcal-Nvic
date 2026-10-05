@@ -18,13 +18,13 @@ set( Nvic_PrivateIncludeDirs
 
 # Source files list for current library generation
 set( Nvic_SourceFiles
-    Nvic.c 
+    Nvic.c
 )
 
 
 # List of public header files provided by the current library
 set( Nvic_PublicHeaders 
-    Nvic_Port.h 
+    Nvic_Port.h
     Nvic_Types.h
 )
 
@@ -38,7 +38,7 @@ set( Nvic_PublicDependentLibs
 
 # List of dependent libraries that are privately used by the current library
 set( Nvic_PrivateDependentLibs
-     
+    
 )
 
 
@@ -80,10 +80,9 @@ target_include_directories( Nvic_Lib
     PUBLIC
         $<BUILD_INTERFACE:${PUBLIC_HEADERS_DIR}>
         $<INSTALL_INTERFACE:include>
-        Nvic_PublicIncludeDirs
+        ${Nvic_PublicIncludeDirs}
     PRIVATE
-        ${Nvic_IncludeDirs}
-        Nvic_PrivateIncludeDirs
+        ${Nvic_PrivateIncludeDirs}
 )
 
 

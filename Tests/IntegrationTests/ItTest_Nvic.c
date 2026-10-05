@@ -519,6 +519,7 @@ void It_Nvic_Set_SystemReset_ResetsMcu( void )
 {
     if( 0u == IntegrationTesting_Get_Stage() )
     {
+        TEST_ASSERT_EQUAL( RCC_REQUEST_OK, Rcc_Set_ResetSourceClear() );
         IntegrationTesting_Set_ResetExpected();
 
         Nvic_Set_SystemReset();

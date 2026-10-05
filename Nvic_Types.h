@@ -1,4 +1,9 @@
 /**
+ * \defgroup Nvic Nvic
+ * \brief Nvic module
+ */
+
+/**
  * \author Mr.Nobody
  * \file Nvic_Types.h
  * \ingroup Nvic

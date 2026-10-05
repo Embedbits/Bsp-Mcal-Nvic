@@ -195,7 +195,7 @@ void Nvic_Deinit( void )
  */
 void Nvic_Task( void )
 {
-
+    return;
 }
 
 
@@ -940,7 +940,7 @@ static void Nvic_PendSv_DefaultHandler( void )
  */
 static void Nvic_SysTick_DefaultHandler( void )
 {
-
+    return;
 }
 
 /* =========================== INTERRUPT HANDLERS =========================== */
