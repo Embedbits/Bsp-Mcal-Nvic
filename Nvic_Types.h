@@ -34,7 +34,7 @@
 /** 4 bits for pre-emption priority,0 bit  for subpriority */
 #define NVIC_PRIORITYGROUP_4            ((uint32_t)0x00000003)
 
-/** STM32L4XX uses 4 Bits for the Priority Levels */
+/** STM32H5 uses 4 Bits for the Priority Levels */
 #define NVIC_PRIO_BITS                  ( 4u )
 
 /* ========================== EXPORTED MACROS =============================== */
@@ -84,7 +84,7 @@ typedef void ( *nvic_IsrCallback_t )( void );
 
 /** Type defining interrupt priority
  * The range of priorities is defined by count of bits by symbolic constant
- * \ref NVIC_PRIO_BITS For STM32L4 is the range 0-15
+ * \ref NVIC_PRIO_BITS For STM32H5 is the range 0-15
  */
 typedef uint32_t nvic_IrqPrio_t;
 
@@ -306,24 +306,43 @@ typedef enum
 
 
 /**
- * \brief Cortex-M IRQ list. The index is decremented by 1 to have StackPointer separated.
+ * \brief Cortex-M IRQ list. The index is exception number decremented by 1 to
+ *        have StackPointer separated (comments contain exception number).
  *
+ * \note  Secure and Non-secure HardFault share single vector (exception 3,
+ *        banked by security state). Exceptions 8 - 10 and 13 are reserved on
+ *        Cortex-M33.
  */
 typedef enum
 {
-    NVIC_CORE_IRQ_RESET              = 0u,  /**< 1 Reset vector                          */
-    NVIC_CORE_IRQ_NMI                = 1u,  /**< 2 Cortex-M4 Non Maskable Interrupt      */
-    NVIC_CORE_IRQ_HARDFAULT          = 2u,  /**< 3 Cortex-M4 Hard Fault Interrupt        */
-    NVIC_CORE_IRQ_MEMFAULT           = 3u,  /**< 5 Cortex-M4 Memory Management Interrupt */
-    NVIC_CORE_IRQ_BUSFAULT           = 4u,  /**< 6 Cortex-M4 Bus Fault Interrupt         */
-    NVIC_CORE_IRQ_USAGEFAULT         = 5u,  /**< 7 Cortex-M4 Usage Fault Interrupt       */
-    NVIC_CORE_IRQ_SECUREFAULT        = 6u,  /*!< 8  Secure Fault                         */
-    NVIC_CORE_IRQ_SVCALL             = 10u, /**< 11 Cortex-M4 SV Call Interrupt          */
-    NVIC_CORE_IRQ_DEBUGMONITOR       = 11u, /**< 12 Cortex-M4 Debug Monitor Interrupt    */
-    NVIC_CORE_IRQ_PENDSV             = 13u, /**< 14 Cortex-M4 Pend SV Interrupt          */
-    NVIC_CORE_IRQ_SYSTICK            = 14u, /**< 15 Cortex-M4 System Tick Interrupt      */
-    NVIC_CORE_IRQ_SIZE                      /**< 16 Count of core Interrupts             */
+    NVIC_CORE_IRQ_RESET              = 0u,  /**< 1 Reset vector                           */
+    NVIC_CORE_IRQ_NMI                = 1u,  /**< 2 Cortex-M33 Non Maskable Interrupt      */
+    NVIC_CORE_IRQ_HARDFAULT          = 2u,  /**< 3 Cortex-M33 Hard Fault Interrupt        */
+    NVIC_CORE_IRQ_MEMFAULT           = 3u,  /**< 4 Cortex-M33 Memory Management Interrupt */
+    NVIC_CORE_IRQ_BUSFAULT           = 4u,  /**< 5 Cortex-M33 Bus Fault Interrupt         */
+    NVIC_CORE_IRQ_USAGEFAULT         = 5u,  /**< 6 Cortex-M33 Usage Fault Interrupt       */
+    NVIC_CORE_IRQ_SECUREFAULT        = 6u,  /**< 7 Cortex-M33 Secure Fault Interrupt      */
+    NVIC_CORE_IRQ_SVCALL             = 10u, /**< 11 Cortex-M33 SV Call Interrupt          */
+    NVIC_CORE_IRQ_DEBUGMONITOR       = 11u, /**< 12 Cortex-M33 Debug Monitor Interrupt    */
+    NVIC_CORE_IRQ_PENDSV             = 13u, /**< 14 Cortex-M33 Pend SV Interrupt          */
+    NVIC_CORE_IRQ_SYSTICK            = 14u, /**< 15 Cortex-M33 System Tick Interrupt      */
+    NVIC_CORE_IRQ_SIZE                      /**< Count of core Interrupts (15 entries)    */
 }   nvic_CoreIrqList_t;
+
+
+/**
+ * \brief Fault status of the core (raw values of SCB fault registers).
+ *
+ * \note  Fault address registers are valid only if the related valid flag
+ *        (MMARVALID, BFARVALID) is set in CFSR.
+ */
+typedef struct
+{
+    uint32_t Cfsr;  /**< Configurable Fault Status Register (MMFSR, BFSR, UFSR) */
+    uint32_t Hfsr;  /**< HardFault Status Register                              */
+    uint32_t Mmfar; /**< MemManage Fault Address Register                       */
+    uint32_t Bfar;  /**< BusFault Address Register                              */
+}   nvic_FaultStatus_t;
 
 /* ========================== EXPORTED VARIABLES ============================ */
 

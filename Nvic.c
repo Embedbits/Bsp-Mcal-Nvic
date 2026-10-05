@@ -96,19 +96,25 @@ static void Nvic_SysTick_DefaultHandler( void );
 /** Stack pointer value (defined in Linker file) */
 extern uint32_t _estack;
 
-/** Vector table located at the begin of FLASH memory. */
+/** Vector table located at the begin of FLASH memory. Used until VTOR is
+ *  switched to RAM table by \ref Nvic_Init, index is exception number. */
 __attribute__ ((section(".isr_vector"))) const void* vector_table[] = {
-    &_estack,              // Initial Stack Pointer
-    StartUp_Handler,
-    Nvic_NMI_DefaultHandler,
-    Nvic_HardFault_DefaultHandler,
-    Nvic_MemFault_DefaultHandler,
-    Nvic_BusFault_DefaultHandler,
-    Nvic_UsageFault_DefaultHandler,
-    Nvic_SvCall_DefaultHandler,
-    Nvic_DebugMonitor_DefaultHandler,
-    Nvic_PendSv_DefaultHandler,
-    Nvic_SysTick_DefaultHandler,
+    &_estack,                           /*  0 Initial Stack Pointer */
+    StartUp_Handler,                    /*  1 Reset                 */
+    Nvic_NMI_DefaultHandler,            /*  2 NMI                   */
+    Nvic_HardFault_DefaultHandler,      /*  3 HardFault             */
+    Nvic_MemFault_DefaultHandler,       /*  4 MemManage             */
+    Nvic_BusFault_DefaultHandler,       /*  5 BusFault              */
+    Nvic_UsageFault_DefaultHandler,     /*  6 UsageFault            */
+    Nvic_DefaultCoreIsr,                /*  7 SecureFault           */
+    NVIC_NULL_PTR,                      /*  8 Reserved              */
+    NVIC_NULL_PTR,                      /*  9 Reserved              */
+    NVIC_NULL_PTR,                      /* 10 Reserved              */
+    Nvic_SvCall_DefaultHandler,         /* 11 SVCall                */
+    Nvic_DebugMonitor_DefaultHandler,   /* 12 DebugMonitor          */
+    NVIC_NULL_PTR,                      /* 13 Reserved              */
+    Nvic_PendSv_DefaultHandler,         /* 14 PendSV                */
+    Nvic_SysTick_DefaultHandler,        /* 15 SysTick               */
 };
 
 /** Custom vector table */
@@ -145,6 +151,9 @@ nvic_ModuleVersion_t Nvic_Get_ModuleVersion( void )
  * and set up all the necessary resources for the module to work. In case of
  * failure, the function shall handle it by itself and shall not be transferred
  * to AppMain layer.
+ *
+ * Initializes core and peripheral vector tables, switches VTOR to the RAM
+ * vector table, configures priority grouping and enables FPU access.
  */
 void Nvic_Init( void )
 {
@@ -152,6 +161,11 @@ void Nvic_Init( void )
     Nvic_PeriphVectTableInit();
 
     Nvic_Config();
+
+/* FPU settings ------------------------------------------------------------*/
+#if (__FPU_PRESENT == 1) && (__FPU_USED == 1)
+    SCB->CPACR |= NVIC_CPACR_FPU_FULL_ACCESS;  /* set CP10 and CP11 Full Access */
+#endif
 }
 
 
@@ -647,24 +661,54 @@ nvic_RequestState_t Nvic_Set_DefaultHandler( nvic_IsrCallback_t defaultHandler )
     return ( returnState );
 }
 
-/* =========================== LOCAL FUNCTIONS ============================== */
 
 /**
-  * \brief  Setup the microcontroller system.
-  * \retval None
-  */
-void SystemInit(void)
+ * \brief Reads fault status registers of the core.
+ *
+ * \note  Registers are only read, fault flags are not cleared. Fault address
+ *        registers are valid only if the related valid flag is set in CFSR.
+ *
+ * \param faultStatus [out]: Pointer to store fault status. Must not be NULL.
+ *
+ * \return Processing request state. Returns \ref NVIC_REQUEST_OK if request
+ *         was processed without problems. Otherwise returns \ref NVIC_REQUEST_ERROR.
+ */
+nvic_RequestState_t Nvic_Get_FaultStatus( nvic_FaultStatus_t * const faultStatus )
 {
-    Nvic_PeriphVectTableInit();
-    Nvic_CoreVectTableInit();
-    Nvic_Config();
+    nvic_RequestState_t returnState = NVIC_REQUEST_ERROR;
 
-/* FPU settings ------------------------------------------------------------*/
-#if (__FPU_PRESENT == 1) && (__FPU_USED == 1)
-    SCB->CPACR |= NVIC_CPACR_FPU_FULL_ACCESS;  /* set CP10 and CP11 Full Access */
-#endif
+    if( NVIC_NULL_PTR != faultStatus )
+    {
+        faultStatus->Cfsr  = SCB->CFSR;
+        faultStatus->Hfsr  = SCB->HFSR;
+        faultStatus->Mmfar = SCB->MMFAR;
+        faultStatus->Bfar  = SCB->BFAR;
+
+        returnState = NVIC_REQUEST_OK;
+    }
+    else
+    {
+        /* Null pointer assigned */
+        returnState = NVIC_REQUEST_ERROR;
+    }
+
+    return ( returnState );
 }
 
+
+/**
+ * \brief Requests system reset of the MCU (SCB AIRCR SYSRESETREQ).
+ *
+ * \note  The function does not return. Core and peripherals are reset, content
+ *        of SRAM is kept (unless SRAM erase on reset is set by option bytes).
+ */
+void Nvic_Set_SystemReset( void )
+{
+    NVIC_SystemReset();
+}
+
+
+/* =========================== LOCAL FUNCTIONS ============================== */
 
 /**
  * \brief Interrupt system core configuration routine.

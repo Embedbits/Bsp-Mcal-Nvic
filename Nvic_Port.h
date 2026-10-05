@@ -58,6 +58,11 @@ nvic_RequestState_t         Nvic_Set_CoreIrq_Prio       ( nvic_CoreIrqList_t irq
 nvic_RequestState_t         Nvic_Get_CoreIrq_Prio       ( nvic_CoreIrqList_t irqId, nvic_IrqPrio_t *irqPrio );
 
 
+nvic_RequestState_t         Nvic_Get_FaultStatus        ( nvic_FaultStatus_t * const faultStatus );
+
+void                        Nvic_Set_SystemReset        ( void );
+
+
 /**
  * \brief Activates interrupts.
  *
