@@ -2,7 +2,7 @@
  * \author Mr.Nobody
  * \file Nvic_Port.h
  * \ingroup Nvic
- * \brief Nvic module public functionality
+ * \brief Nested Vector Interrupt Controller (NVIC) module public functionality
  *
  * This file contains all available public functionality, any other files shall 
  * not used outside of the module.
@@ -58,6 +58,11 @@ nvic_RequestState_t         Nvic_Set_CoreIrq_Prio       ( nvic_CoreIrqList_t irq
 nvic_RequestState_t         Nvic_Get_CoreIrq_Prio       ( nvic_CoreIrqList_t irqId, nvic_IrqPrio_t *irqPrio );
 
 
+nvic_RequestState_t         Nvic_Get_FaultStatus        ( nvic_FaultStatus_t * const faultStatus );
+
+void                        Nvic_Set_SystemReset        ( void );
+
+
 /**
  * \brief Activates interrupts.
  *
@@ -80,6 +85,7 @@ __attribute__((always_inline)) static inline void Nvic_Set_InterruptsInactive( v
 #ifdef __cplusplus
 }
 #endif
+
 
 #endif /* NVIC_NVIC_PORT_H */
 
