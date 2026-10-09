@@ -1,13 +1,13 @@
-/*
- *    Mr.Nobody, COPYRIGHT (c) 2021
- *    ALL RIGHTS RESERVED
- *
+/**
+ * \defgroup Nvic Nvic
+ * \brief Nvic module
  */
 
 /**
+ * \author Mr.Nobody
  * \file Nvic_Types.h
  * \ingroup Nvic
- * \brief Nvic module global types definition
+ * \brief Nested Vector Interrupt Controller (NVIC) module global types definition
  *
  * This file contains the types definitions used across the module and are 
  * available for other modules through Port file.
@@ -18,6 +18,7 @@
 #define NVIC_NVIC_TYPES_H
 /* ============================== INCLUDES ================================== */
 #include "stdint.h"                         /* Module types definition        */
+#include "Stm32.h"                          /* MCU core functionality         */
 /* ========================== SYMBOLIC CONSTANTS ============================ */
 
 /** Null pointer definition */
@@ -38,7 +39,7 @@
 /** 4 bits for pre-emption priority,0 bit  for subpriority */
 #define NVIC_PRIORITYGROUP_4            ((uint32_t)0x00000003)
 
-/** STM32L4XX uses 4 Bits for the Priority Levels */
+/** STM32U5 uses 4 Bits for the Priority Levels */
 #define NVIC_PRIO_BITS                  ( 4u )
 
 /* ========================== EXPORTED MACROS =============================== */
@@ -88,7 +89,7 @@ typedef void ( *nvic_IsrCallback_t )( void );
 
 /** Type defining interrupt priority
  * The range of priorities is defined by count of bits by symbolic constant
- * \ref NVIC_PRIO_BITS For STM32L4 is the range 0-15
+ * \ref NVIC_PRIO_BITS For STM32U5 is the range 0-15
  */
 typedef uint32_t nvic_IrqPrio_t;
 
@@ -115,171 +116,266 @@ typedef enum
  */
 typedef enum
 {
-    NVIC_PERIPH_IRQ_WWDG             = 0,   /**< Window WatchDog interrupt                     */
-    NVIC_PERIPH_IRQ_PVD_PVM          = 1,   /**< PVD/PVM through EXTI Line detection Interrupt */
-    NVIC_PERIPH_IRQ_RTC              = 2,   /**< RTC non-secure interrupt                      */
-    NVIC_PERIPH_IRQ_RTC_S            = 3,   /**< RTC secure interrupt                          */
-    NVIC_PERIPH_IRQ_TAMP             = 4,   /**< Tamper global interrupt                       */
-    NVIC_PERIPH_IRQ_RAMCFG           = 5,   /**< RAMCFG global interrupt                       */
-    NVIC_PERIPH_IRQ_FLASH            = 6,   /**< FLASH non-secure global interrupt             */
-    NVIC_PERIPH_IRQ_FLASH_S          = 7,   /**< FLASH secure global interrupt                 */
-    NVIC_PERIPH_IRQ_GTZC             = 8,   /**< Global TrustZone Controller interrupt         */
-    NVIC_PERIPH_IRQ_RCC              = 9,   /**< RCC non secure global interrupt               */
-    NVIC_PERIPH_IRQ_RCC_S            = 10,  /**< RCC secure global interrupt                   */
-    NVIC_PERIPH_IRQ_EXTI0            = 11,  /**< EXTI Line0 interrupt                          */
-    NVIC_PERIPH_IRQ_EXTI1            = 12,  /**< EXTI Line1 interrupt                          */
-    NVIC_PERIPH_IRQ_EXTI2            = 13,  /**< EXTI Line2 interrupt                          */
-    NVIC_PERIPH_IRQ_EXTI3            = 14,  /**< EXTI Line3 interrupt                          */
-    NVIC_PERIPH_IRQ_EXTI4            = 15,  /**< EXTI Line4 interrupt                          */
-    NVIC_PERIPH_IRQ_EXTI5            = 16,  /**< EXTI Line5 interrupt                          */
-    NVIC_PERIPH_IRQ_EXTI6            = 17,  /**< EXTI Line6 interrupt                          */
-    NVIC_PERIPH_IRQ_EXTI7            = 18,  /**< EXTI Line7 interrupt                          */
-    NVIC_PERIPH_IRQ_EXTI8            = 19,  /**< EXTI Line8 interrupt                          */
-    NVIC_PERIPH_IRQ_EXTI9            = 20,  /**< EXTI Line9 interrupt                          */
-    NVIC_PERIPH_IRQ_EXTI10           = 21,  /**< EXTI Line10 interrupt                         */
-    NVIC_PERIPH_IRQ_EXTI11           = 22,  /**< EXTI Line11 interrupt                         */
-    NVIC_PERIPH_IRQ_EXTI12           = 23,  /**< EXTI Line12 interrupt                         */
-    NVIC_PERIPH_IRQ_EXTI13           = 24,  /**< EXTI Line13 interrupt                         */
-    NVIC_PERIPH_IRQ_EXTI14           = 25,  /**< EXTI Line14 interrupt                         */
-    NVIC_PERIPH_IRQ_EXTI15           = 26,  /**< EXTI Line15 interrupt                         */
-    NVIC_PERIPH_IRQ_IWDG             = 27,  /**< IWDG global interrupt                         */
-    NVIC_PERIPH_IRQ_SAES             = 28,  /**< Secure AES global interrupt                   */
-    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL0  = 29,  /**< GPDMA1 Channel 0 global interrupt             */
-    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL1  = 30,  /**< GPDMA1 Channel 1 global interrupt             */
-    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL2  = 31,  /**< GPDMA1 Channel 2 global interrupt             */
-    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL3  = 32,  /**< GPDMA1 Channel 3 global interrupt             */
-    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL4  = 33,  /**< GPDMA1 Channel 4 global interrupt             */
-    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL5  = 34,  /**< GPDMA1 Channel 5 global interrupt             */
-    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL6  = 35,  /**< GPDMA1 Channel 6 global interrupt             */
-    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL7  = 36,  /**< GPDMA1 Channel 7 global interrupt             */
-    NVIC_PERIPH_IRQ_ADC1_2           = 37,  /**< ADC1_2 global interrupt                       */
-    NVIC_PERIPH_IRQ_DAC1             = 38,  /**< DAC1 global interrupt                         */
-    NVIC_PERIPH_IRQ_FDCAN1_IT0       = 39,  /**< FDCAN1 interrupt 0                            */
-    NVIC_PERIPH_IRQ_FDCAN1_IT1       = 40,  /**< FDCAN1 interrupt 1                            */
-    NVIC_PERIPH_IRQ_TIM1_BRK         = 41,  /**< TIM1 Break interrupt                          */
-    NVIC_PERIPH_IRQ_TIM1_UP          = 42,  /**< TIM1 Update interrupt                         */
-    NVIC_PERIPH_IRQ_TIM1_TRG_COM     = 43,  /**< TIM1 Trigger and Commutation interrupt        */
-    NVIC_PERIPH_IRQ_TIM1_CC          = 44,  /**< TIM1 Capture Compare interrupt                */
-    NVIC_PERIPH_IRQ_TIM2             = 45,  /**< TIM2 global interrupt                         */
-    NVIC_PERIPH_IRQ_TIM3             = 46,  /**< TIM3 global interrupt                         */
-    NVIC_PERIPH_IRQ_TIM4             = 47,  /**< TIM4 global interrupt                         */
-    NVIC_PERIPH_IRQ_TIM5             = 48,  /**< TIM5 global interrupt                         */
-    NVIC_PERIPH_IRQ_TIM6             = 49,  /**< TIM6 global interrupt                         */
-    NVIC_PERIPH_IRQ_TIM7             = 50,  /**< TIM7 global interrupt                         */
-    NVIC_PERIPH_IRQ_TIM8_BRK         = 51,  /**< TIM8 Break interrupt                          */
-    NVIC_PERIPH_IRQ_TIM8_UP          = 52,  /**< TIM8 Update interrupt                         */
-    NVIC_PERIPH_IRQ_TIM8_TRG_COM     = 53,  /**< TIM8 Trigger and Commutation interrupt        */
-    NVIC_PERIPH_IRQ_TIM8_CC          = 54,  /**< TIM8 Capture Compare interrupt                */
-    NVIC_PERIPH_IRQ_I2C1_EV          = 55,  /**< I2C1 Event interrupt                          */
-    NVIC_PERIPH_IRQ_I2C1_ER          = 56,  /**< I2C1 Error interrupt                          */
-    NVIC_PERIPH_IRQ_I2C2_EV          = 57,  /**< I2C2 Event interrupt                          */
-    NVIC_PERIPH_IRQ_I2C2_ER          = 58,  /**< I2C2 Error interrupt                          */
-    NVIC_PERIPH_IRQ_SPI1             = 59,  /**< SPI1 global interrupt                         */
-    NVIC_PERIPH_IRQ_SPI2             = 60,  /**< SPI2 global interrupt                         */
-    NVIC_PERIPH_IRQ_USART1           = 61,  /**< USART1 global interrupt                       */
-    NVIC_PERIPH_IRQ_USART2           = 62,  /**< USART2 global interrupt                       */
-    NVIC_PERIPH_IRQ_USART3           = 63,  /**< USART3 global interrupt                       */
-    NVIC_PERIPH_IRQ_UART4            = 64,  /**< UART4 global interrupt                        */
-    NVIC_PERIPH_IRQ_UART5            = 65,  /**< UART5 global interrupt                        */
-    NVIC_PERIPH_IRQ_LPUART1          = 66,  /**< LPUART1 global interrupt                      */
-    NVIC_PERIPH_IRQ_LPTIM1           = 67,  /**< LPTIM1 global interrupt                       */
-    NVIC_PERIPH_IRQ_LPTIM2           = 68,  /**< LPTIM2 global interrupt                       */
-    NVIC_PERIPH_IRQ_TIM15            = 69,  /**< TIM15 global interrupt                        */
-    NVIC_PERIPH_IRQ_TIM16            = 70,  /**< TIM16 global interrupt                        */
-    NVIC_PERIPH_IRQ_TIM17            = 71,  /**< TIM17 global interrupt                        */
-    NVIC_PERIPH_IRQ_COMP             = 72,  /**< COMP1 and COMP2 through EXTI Lines interrupts */
-    NVIC_PERIPH_IRQ_OTG_HS           = 73,  /**< USB OTG HS global interrupt                   */
-    NVIC_PERIPH_IRQ_CRS              = 74,  /**< CRS global interrupt                          */
-    NVIC_PERIPH_IRQ_FMC              = 75,  /**< FSMC global interrupt                         */
-    NVIC_PERIPH_IRQ_OCTOSPI1         = 76,  /**< OctoSPI1 global interrupt                     */
-    NVIC_PERIPH_IRQ_PWR_S3WU         = 77,  /**< PWR wake up from Stop3 interrupt              */
-    NVIC_PERIPH_IRQ_SDMMC1           = 78,  /**< SDMMC1 global interrupt                       */
-    NVIC_PERIPH_IRQ_SDMMC2           = 79,  /**< SDMMC2 global interrupt                       */
-    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL8  = 80,  /**< GPDMA1 Channel 8 global interrupt             */
-    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL9  = 81,  /**< GPDMA1 Channel 9 global interrupt             */
-    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL10 = 82,  /**< GPDMA1 Channel 10 global interrupt            */
-    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL11 = 83,  /**< GPDMA1 Channel 11 global interrupt            */
-    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL12 = 84,  /**< GPDMA1 Channel 12 global interrupt            */
-    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL13 = 85,  /**< GPDMA1 Channel 13 global interrupt            */
-    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL14 = 86,  /**< GPDMA1 Channel 14 global interrupt            */
-    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL15 = 87,  /**< GPDMA1 Channel 15 global interrupt            */
-    NVIC_PERIPH_IRQ_I2C3_EV          = 88,  /**< I2C3 event interrupt                          */
-    NVIC_PERIPH_IRQ_I2C3_ER          = 89,  /**< I2C3 error interrupt                          */
-    NVIC_PERIPH_IRQ_SAI1             = 90,  /**< Serial Audio Interface 1 global interrupt     */
-    NVIC_PERIPH_IRQ_SAI2             = 91,  /**< Serial Audio Interface 2 global interrupt     */
-    NVIC_PERIPH_IRQ_TSC              = 92,  /**< Touch Sense Controller global interrupt       */
-    NVIC_PERIPH_IRQ_AES              = 93,  /**< AES global interrupt                          */
-    NVIC_PERIPH_IRQ_RNG              = 94,  /**< RNG global interrupt                          */
-    NVIC_PERIPH_IRQ_FPU              = 95,  /**< FPU global interrupt                          */
-    NVIC_PERIPH_IRQ_HASH             = 96,  /**< HASH global interrupt                         */
-    NVIC_PERIPH_IRQ_PKA              = 97,  /**< PKA global interrupt                          */
-    NVIC_PERIPH_IRQ_LPTIM3           = 98,  /**< LPTIM3 global interrupt                       */
-    NVIC_PERIPH_IRQ_SPI3             = 99,  /**< SPI3 global interrupt                         */
-    NVIC_PERIPH_IRQ_I2C4_ER          = 100, /**< I2C4 Error interrupt                          */
-    NVIC_PERIPH_IRQ_I2C4_EV          = 101, /**< I2C4 Event interrupt                          */
-    NVIC_PERIPH_IRQ_MDF1_FLT0        = 102, /**< MDF1 Filter 0 global interrupt                */
-    NVIC_PERIPH_IRQ_MDF1_FLT1        = 103, /**< MDF1 Filter 1 global interrupt                */
-    NVIC_PERIPH_IRQ_MDF1_FLT2        = 104, /**< MDF1 Filter 2 global interrupt                */
-    NVIC_PERIPH_IRQ_MDF1_FLT3        = 105, /**< MDF1 Filter 3 global interrupt                */
-    NVIC_PERIPH_IRQ_UCPD1            = 106, /**< UCPD1 global interrupt                        */
-    NVIC_PERIPH_IRQ_ICACHE           = 107, /**< Instruction cache global interrupt            */
-    NVIC_PERIPH_IRQ_OTFDEC1          = 108, /**< OTFDEC1 global interrupt                      */
-    NVIC_PERIPH_IRQ_OTFDEC2          = 109, /**< OTFDEC2 global interrupt                      */
-    NVIC_PERIPH_IRQ_LPTIM4           = 110, /**< LPTIM4 global interrupt                       */
-    NVIC_PERIPH_IRQ_DCACHE1          = 111, /**< Data cache global interrupt                   */
-    NVIC_PERIPH_IRQ_ADF1             = 112, /**< ADF interrupt                                 */
-    NVIC_PERIPH_IRQ_ADC4             = 113, /**< ADC4 (12bits) global interrupt                */
-    NVIC_PERIPH_IRQ_LPDMA1_CHANNEL0  = 114, /**< LPDMA1 SmartRun Channel 0 global interrupt    */
-    NVIC_PERIPH_IRQ_LPDMA1_CHANNEL1  = 115, /**< LPDMA1 SmartRun Channel 1 global interrupt    */
-    NVIC_PERIPH_IRQ_LPDMA1_CHANNEL2  = 116, /**< LPDMA1 SmartRun Channel 2 global interrupt    */
-    NVIC_PERIPH_IRQ_LPDMA1_CHANNEL3  = 117, /**< LPDMA1 SmartRun Channel 3 global interrupt    */
-    NVIC_PERIPH_IRQ_DMA2D            = 118, /**< DMA2D global interrupt                        */
-    NVIC_PERIPH_IRQ_DCMI_PSSI        = 119, /**< DCMI/PSSI global interrupt                    */
-    NVIC_PERIPH_IRQ_OCTOSPI2         = 120, /**< OCTOSPI2 global interrupt                     */
-    NVIC_PERIPH_IRQ_MDF1_FLT4        = 121, /**< MDF1 Filter 4 global interrupt                */
-    NVIC_PERIPH_IRQ_MDF1_FLT5        = 122, /**< MDF1 Filter 5 global interrupt                */
-    NVIC_PERIPH_IRQ_CORDIC           = 123, /**< CORDIC global interrupt                       */
-    NVIC_PERIPH_IRQ_FMAC             = 124, /**< FMAC global interrupt                         */
-    NVIC_PERIPH_IRQ_LSECSSD          = 125, /**< LSECSSD and MSI_PLL_UNLOCK global interrupts  */
-    NVIC_PERIPH_IRQ_USART6           = 126, /**< USART6 global interrupt                       */
-    NVIC_PERIPH_IRQ_I2C5_ER          = 127, /**< I2C5 Error interrupt                          */
-    NVIC_PERIPH_IRQ_I2C5_EV          = 128, /**< I2C5 Event interrupt                          */
-    NVIC_PERIPH_IRQ_I2C6_ER          = 129, /**< I2C6 Error interrupt                          */
-    NVIC_PERIPH_IRQ_I2C6_EV          = 130, /**< I2C6 Error interrupt                          */
-    NVIC_PERIPH_IRQ_HSPI1            = 131, /**< HSPI1 global interrupt                        */
-    NVIC_PERIPH_IRQ_GPU2D            = 132, /**< GPU2D global interrupt                        */
-    NVIC_PERIPH_IRQ_GPU2D_ER         = 133, /**< GPU2D Error interrupt                         */
-    NVIC_PERIPH_IRQ_GFXMMU           = 134, /**< GFXMMU global interrupt                       */
-    NVIC_PERIPH_IRQ_LTDC             = 135, /**< LCD-TFT global interrupt                      */
-    NVIC_PERIPH_IRQ_LTDC_ER          = 136, /**< LCD-TFT Error interrupt                       */
-    NVIC_PERIPH_IRQ_DSI              = 137, /**< DSIHOST global interrupt                      */
-    NVIC_PERIPH_IRQ_DCACHE2          = 138, /**< DCACHE2 Data cache global interrupt           */
-    NVIC_PERIPH_IRQ_GFXTIM           = 139, /**< GFXTIM global interrupt                       */
-    NVIC_PERIPH_IRQ_JPEG             = 140, /**< JPEG sync interrupt                           */
+    NVIC_PERIPH_IRQ_WWDG             = 0u,   /**< Window WatchDog interrupt                     */
+    NVIC_PERIPH_IRQ_PVD_PVM          = 1u,   /**< PVD/PVM through EXTI Line detection Interrupt */
+    NVIC_PERIPH_IRQ_RTC              = 2u,   /**< RTC non-secure interrupt                      */
+    NVIC_PERIPH_IRQ_RTC_S            = 3u,   /**< RTC secure interrupt                          */
+    NVIC_PERIPH_IRQ_TAMP             = 4u,   /**< Tamper global interrupt                       */
+    NVIC_PERIPH_IRQ_RAMCFG           = 5u,   /**< RAMCFG global interrupt                       */
+    NVIC_PERIPH_IRQ_FLASH            = 6u,   /**< FLASH non-secure global interrupt             */
+    NVIC_PERIPH_IRQ_FLASH_S          = 7u,   /**< FLASH secure global interrupt                 */
+    NVIC_PERIPH_IRQ_GTZC             = 8u,   /**< Global TrustZone Controller interrupt         */
+    NVIC_PERIPH_IRQ_RCC              = 9u,   /**< RCC non secure global interrupt               */
+    NVIC_PERIPH_IRQ_RCC_S            = 10u,  /**< RCC secure global interrupt                   */
+    NVIC_PERIPH_IRQ_EXTI0            = 11u,  /**< EXTI Line0 interrupt                          */
+    NVIC_PERIPH_IRQ_EXTI1            = 12u,  /**< EXTI Line1 interrupt                          */
+    NVIC_PERIPH_IRQ_EXTI2            = 13u,  /**< EXTI Line2 interrupt                          */
+    NVIC_PERIPH_IRQ_EXTI3            = 14u,  /**< EXTI Line3 interrupt                          */
+    NVIC_PERIPH_IRQ_EXTI4            = 15u,  /**< EXTI Line4 interrupt                          */
+    NVIC_PERIPH_IRQ_EXTI5            = 16u,  /**< EXTI Line5 interrupt                          */
+    NVIC_PERIPH_IRQ_EXTI6            = 17u,  /**< EXTI Line6 interrupt                          */
+    NVIC_PERIPH_IRQ_EXTI7            = 18u,  /**< EXTI Line7 interrupt                          */
+    NVIC_PERIPH_IRQ_EXTI8            = 19u,  /**< EXTI Line8 interrupt                          */
+    NVIC_PERIPH_IRQ_EXTI9            = 20u,  /**< EXTI Line9 interrupt                          */
+    NVIC_PERIPH_IRQ_EXTI10           = 21u,  /**< EXTI Line10 interrupt                         */
+    NVIC_PERIPH_IRQ_EXTI11           = 22u,  /**< EXTI Line11 interrupt                         */
+    NVIC_PERIPH_IRQ_EXTI12           = 23u,  /**< EXTI Line12 interrupt                         */
+    NVIC_PERIPH_IRQ_EXTI13           = 24u,  /**< EXTI Line13 interrupt                         */
+    NVIC_PERIPH_IRQ_EXTI14           = 25u,  /**< EXTI Line14 interrupt                         */
+    NVIC_PERIPH_IRQ_EXTI15           = 26u,  /**< EXTI Line15 interrupt                         */
+    NVIC_PERIPH_IRQ_IWDG             = 27u,  /**< IWDG global interrupt                         */
+#if defined (SAES)
+    NVIC_PERIPH_IRQ_SAES             = 28u,  /**< Secure AES global interrupt                   */
+#endif
+    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL0  = 29u,  /**< GPDMA1 Channel 0 global interrupt             */
+    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL1  = 30u,  /**< GPDMA1 Channel 1 global interrupt             */
+    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL2  = 31u,  /**< GPDMA1 Channel 2 global interrupt             */
+    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL3  = 32u,  /**< GPDMA1 Channel 3 global interrupt             */
+    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL4  = 33u,  /**< GPDMA1 Channel 4 global interrupt             */
+    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL5  = 34u,  /**< GPDMA1 Channel 5 global interrupt             */
+    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL6  = 35u,  /**< GPDMA1 Channel 6 global interrupt             */
+    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL7  = 36u,  /**< GPDMA1 Channel 7 global interrupt             */
+    NVIC_PERIPH_IRQ_ADC1             = 37u,  /**< ADC1 global interrupt (shared with ADC2)     */
+#if defined (ADC2)
+    NVIC_PERIPH_IRQ_ADC1_2           = 37u,  /**< ADC1 and ADC2 global interrupt               */
+#endif
+    NVIC_PERIPH_IRQ_DAC1             = 38u,  /**< DAC1 global interrupt                         */
+    NVIC_PERIPH_IRQ_FDCAN1_IT0       = 39u,  /**< FDCAN1 interrupt 0                            */
+    NVIC_PERIPH_IRQ_FDCAN1_IT1       = 40u,  /**< FDCAN1 interrupt 1                            */
+    NVIC_PERIPH_IRQ_TIM1_BRK         = 41u,  /**< TIM1 Break interrupt                          */
+    NVIC_PERIPH_IRQ_TIM1_UP          = 42u,  /**< TIM1 Update interrupt                         */
+    NVIC_PERIPH_IRQ_TIM1_TRG_COM     = 43u,  /**< TIM1 Trigger and Commutation interrupt        */
+    NVIC_PERIPH_IRQ_TIM1_CC          = 44u,  /**< TIM1 Capture Compare interrupt                */
+    NVIC_PERIPH_IRQ_TIM2             = 45u,  /**< TIM2 global interrupt                         */
+    NVIC_PERIPH_IRQ_TIM3             = 46u,  /**< TIM3 global interrupt                         */
+    NVIC_PERIPH_IRQ_TIM4             = 47u,  /**< TIM4 global interrupt                         */
+    NVIC_PERIPH_IRQ_TIM5             = 48u,  /**< TIM5 global interrupt                         */
+    NVIC_PERIPH_IRQ_TIM6             = 49u,  /**< TIM6 global interrupt                         */
+    NVIC_PERIPH_IRQ_TIM7             = 50u,  /**< TIM7 global interrupt                         */
+    NVIC_PERIPH_IRQ_TIM8_BRK         = 51u,  /**< TIM8 Break interrupt                          */
+    NVIC_PERIPH_IRQ_TIM8_UP          = 52u,  /**< TIM8 Update interrupt                         */
+    NVIC_PERIPH_IRQ_TIM8_TRG_COM     = 53u,  /**< TIM8 Trigger and Commutation interrupt        */
+    NVIC_PERIPH_IRQ_TIM8_CC          = 54u,  /**< TIM8 Capture Compare interrupt                */
+    NVIC_PERIPH_IRQ_I2C1_EV          = 55u,  /**< I2C1 Event interrupt                          */
+    NVIC_PERIPH_IRQ_I2C1_ER          = 56u,  /**< I2C1 Error interrupt                          */
+    NVIC_PERIPH_IRQ_I2C2_EV          = 57u,  /**< I2C2 Event interrupt                          */
+    NVIC_PERIPH_IRQ_I2C2_ER          = 58u,  /**< I2C2 Error interrupt                          */
+    NVIC_PERIPH_IRQ_SPI1             = 59u,  /**< SPI1 global interrupt                         */
+    NVIC_PERIPH_IRQ_SPI2             = 60u,  /**< SPI2 global interrupt                         */
+    NVIC_PERIPH_IRQ_USART1           = 61u,  /**< USART1 global interrupt                       */
+#if defined (USART2)
+    NVIC_PERIPH_IRQ_USART2           = 62u,  /**< USART2 global interrupt                       */
+#endif
+    NVIC_PERIPH_IRQ_USART3           = 63u,  /**< USART3 global interrupt                       */
+    NVIC_PERIPH_IRQ_UART4            = 64u,  /**< UART4 global interrupt                        */
+    NVIC_PERIPH_IRQ_UART5            = 65u,  /**< UART5 global interrupt                        */
+    NVIC_PERIPH_IRQ_LPUART1          = 66u,  /**< LPUART1 global interrupt                      */
+    NVIC_PERIPH_IRQ_LPTIM1           = 67u,  /**< LPTIM1 global interrupt                       */
+    NVIC_PERIPH_IRQ_LPTIM2           = 68u,  /**< LPTIM2 global interrupt                       */
+    NVIC_PERIPH_IRQ_TIM15            = 69u,  /**< TIM15 global interrupt                        */
+    NVIC_PERIPH_IRQ_TIM16            = 70u,  /**< TIM16 global interrupt                        */
+    NVIC_PERIPH_IRQ_TIM17            = 71u,  /**< TIM17 global interrupt                        */
+    NVIC_PERIPH_IRQ_COMP             = 72u,  /**< COMP1 and COMP2 through EXTI Lines interrupts */
+#if defined (USB_DRD_FS)
+    NVIC_PERIPH_IRQ_USB              = 73u,  /**< USB DRD FS global interrupt                   */
+#endif
+#if defined (USB_OTG_FS)
+    NVIC_PERIPH_IRQ_OTG_FS           = 73u,  /**< USB OTG FS global interrupt                   */
+#endif
+#if defined (USB_OTG_HS)
+    NVIC_PERIPH_IRQ_OTG_HS           = 73u,  /**< USB OTG HS global interrupt                   */
+#endif
+    NVIC_PERIPH_IRQ_CRS              = 74u,  /**< CRS global interrupt                          */
+#if defined (FMC_Bank1_R)
+    NVIC_PERIPH_IRQ_FMC              = 75u,  /**< FSMC global interrupt                         */
+#endif
+    NVIC_PERIPH_IRQ_OCTOSPI1         = 76u,  /**< OctoSPI1 global interrupt                     */
+    NVIC_PERIPH_IRQ_PWR_S3WU         = 77u,  /**< PWR wake up from Stop3 interrupt              */
+    NVIC_PERIPH_IRQ_SDMMC1           = 78u,  /**< SDMMC1 global interrupt                       */
+#if defined (SDMMC2)
+    NVIC_PERIPH_IRQ_SDMMC2           = 79u,  /**< SDMMC2 global interrupt                       */
+#endif
+    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL8  = 80u,  /**< GPDMA1 Channel 8 global interrupt             */
+    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL9  = 81u,  /**< GPDMA1 Channel 9 global interrupt             */
+    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL10 = 82u,  /**< GPDMA1 Channel 10 global interrupt            */
+    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL11 = 83u,  /**< GPDMA1 Channel 11 global interrupt            */
+    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL12 = 84u,  /**< GPDMA1 Channel 12 global interrupt            */
+    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL13 = 85u,  /**< GPDMA1 Channel 13 global interrupt            */
+    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL14 = 86u,  /**< GPDMA1 Channel 14 global interrupt            */
+    NVIC_PERIPH_IRQ_GPDMA1_CHANNEL15 = 87u,  /**< GPDMA1 Channel 15 global interrupt            */
+    NVIC_PERIPH_IRQ_I2C3_EV          = 88u,  /**< I2C3 event interrupt                          */
+    NVIC_PERIPH_IRQ_I2C3_ER          = 89u,  /**< I2C3 error interrupt                          */
+    NVIC_PERIPH_IRQ_SAI1             = 90u,  /**< Serial Audio Interface 1 global interrupt     */
+#if defined (SAI2)
+    NVIC_PERIPH_IRQ_SAI2             = 91u,  /**< Serial Audio Interface 2 global interrupt     */
+#endif
+    NVIC_PERIPH_IRQ_TSC              = 92u,  /**< Touch Sense Controller global interrupt       */
+#if defined (AES)
+    NVIC_PERIPH_IRQ_AES              = 93u,  /**< AES global interrupt                          */
+#endif
+    NVIC_PERIPH_IRQ_RNG              = 94u,  /**< RNG global interrupt                          */
+    NVIC_PERIPH_IRQ_FPU              = 95u,  /**< FPU global interrupt                          */
+    NVIC_PERIPH_IRQ_HASH             = 96u,  /**< HASH global interrupt                         */
+#if defined (PKA)
+    NVIC_PERIPH_IRQ_PKA              = 97u,  /**< PKA global interrupt                          */
+#endif
+    NVIC_PERIPH_IRQ_LPTIM3           = 98u,  /**< LPTIM3 global interrupt                       */
+    NVIC_PERIPH_IRQ_SPI3             = 99u,  /**< SPI3 global interrupt                         */
+    NVIC_PERIPH_IRQ_I2C4_ER          = 100u, /**< I2C4 Error interrupt                          */
+    NVIC_PERIPH_IRQ_I2C4_EV          = 101u, /**< I2C4 Event interrupt                          */
+    NVIC_PERIPH_IRQ_MDF1_FLT0        = 102u, /**< MDF1 Filter 0 global interrupt                */
+    NVIC_PERIPH_IRQ_MDF1_FLT1        = 103u, /**< MDF1 Filter 1 global interrupt                */
+#if !defined (STM32U535xx) && \
+    !defined (STM32U545xx)
+    NVIC_PERIPH_IRQ_MDF1_FLT2        = 104u, /**< MDF1 Filter 2 global interrupt                */
+#endif
+#if !defined (STM32U535xx) && \
+    !defined (STM32U545xx)
+    NVIC_PERIPH_IRQ_MDF1_FLT3        = 105u, /**< MDF1 Filter 3 global interrupt                */
+#endif
+#if defined (UCPD1)
+    NVIC_PERIPH_IRQ_UCPD1            = 106u, /**< UCPD1 global interrupt                        */
+#endif
+    NVIC_PERIPH_IRQ_ICACHE           = 107u, /**< Instruction cache global interrupt            */
+#if defined (OTFDEC1)
+    NVIC_PERIPH_IRQ_OTFDEC1          = 108u, /**< OTFDEC1 global interrupt                      */
+#endif
+#if defined (OTFDEC2)
+    NVIC_PERIPH_IRQ_OTFDEC2          = 109u, /**< OTFDEC2 global interrupt                      */
+#endif
+    NVIC_PERIPH_IRQ_LPTIM4           = 110u, /**< LPTIM4 global interrupt                       */
+    NVIC_PERIPH_IRQ_DCACHE1          = 111u, /**< Data cache global interrupt                   */
+    NVIC_PERIPH_IRQ_ADF1             = 112u, /**< ADF interrupt                                 */
+    NVIC_PERIPH_IRQ_ADC4             = 113u, /**< ADC4 (12bits) global interrupt                */
+    NVIC_PERIPH_IRQ_LPDMA1_CHANNEL0  = 114u, /**< LPDMA1 SmartRun Channel 0 global interrupt    */
+    NVIC_PERIPH_IRQ_LPDMA1_CHANNEL1  = 115u, /**< LPDMA1 SmartRun Channel 1 global interrupt    */
+    NVIC_PERIPH_IRQ_LPDMA1_CHANNEL2  = 116u, /**< LPDMA1 SmartRun Channel 2 global interrupt    */
+    NVIC_PERIPH_IRQ_LPDMA1_CHANNEL3  = 117u, /**< LPDMA1 SmartRun Channel 3 global interrupt    */
+#if defined (DMA2D)
+    NVIC_PERIPH_IRQ_DMA2D            = 118u, /**< DMA2D global interrupt                        */
+#endif
+    NVIC_PERIPH_IRQ_DCMI_PSSI        = 119u, /**< DCMI/PSSI global interrupt                    */
+#if defined (OCTOSPI2)
+    NVIC_PERIPH_IRQ_OCTOSPI2         = 120u, /**< OCTOSPI2 global interrupt                     */
+#endif
+#if !defined (STM32U535xx) && \
+    !defined (STM32U545xx)
+    NVIC_PERIPH_IRQ_MDF1_FLT4        = 121u, /**< MDF1 Filter 4 global interrupt                */
+#endif
+#if !defined (STM32U535xx) && \
+    !defined (STM32U545xx)
+    NVIC_PERIPH_IRQ_MDF1_FLT5        = 122u, /**< MDF1 Filter 5 global interrupt                */
+#endif
+    NVIC_PERIPH_IRQ_CORDIC           = 123u, /**< CORDIC global interrupt                       */
+    NVIC_PERIPH_IRQ_FMAC             = 124u, /**< FMAC global interrupt                         */
+    NVIC_PERIPH_IRQ_LSECSSD          = 125u, /**< LSECSSD and MSI_PLL_UNLOCK global interrupts  */
+#if defined (USART6)
+    NVIC_PERIPH_IRQ_USART6           = 126u, /**< USART6 global interrupt                       */
+#endif
+#if defined (I2C5)
+    NVIC_PERIPH_IRQ_I2C5_ER          = 127u, /**< I2C5 Error interrupt                          */
+#endif
+#if defined (I2C5)
+    NVIC_PERIPH_IRQ_I2C5_EV          = 128u, /**< I2C5 Event interrupt                          */
+#endif
+#if defined (I2C6)
+    NVIC_PERIPH_IRQ_I2C6_ER          = 129u, /**< I2C6 Error interrupt                          */
+#endif
+#if defined (I2C6)
+    NVIC_PERIPH_IRQ_I2C6_EV          = 130u, /**< I2C6 Event interrupt                          */
+#endif
+#if defined (HSPI1)
+    NVIC_PERIPH_IRQ_HSPI1            = 131u, /**< HSPI1 global interrupt                        */
+#endif
+#if defined (GPU2D)
+    NVIC_PERIPH_IRQ_GPU2D            = 132u, /**< GPU2D global interrupt                        */
+#endif
+#if defined (GPU2D)
+    NVIC_PERIPH_IRQ_GPU2D_ER         = 133u, /**< GPU2D Error interrupt                         */
+#endif
+#if defined (GFXMMU)
+    NVIC_PERIPH_IRQ_GFXMMU           = 134u, /**< GFXMMU global interrupt                       */
+#endif
+#if defined (LTDC)
+    NVIC_PERIPH_IRQ_LTDC             = 135u, /**< LCD-TFT global interrupt                      */
+#endif
+#if defined (LTDC)
+    NVIC_PERIPH_IRQ_LTDC_ER          = 136u, /**< LCD-TFT Error interrupt                       */
+#endif
+#if defined (DSI)
+    NVIC_PERIPH_IRQ_DSI              = 137u, /**< DSIHOST global interrupt                      */
+#endif
+#if defined (DCACHE2)
+    NVIC_PERIPH_IRQ_DCACHE2          = 138u, /**< DCACHE2 Data cache global interrupt           */
+#endif
+#if defined (GFXTIM)
+    NVIC_PERIPH_IRQ_GFXTIM           = 139u, /**< GFXTIM global interrupt                       */
+#endif
+#if defined (JPEG)
+    NVIC_PERIPH_IRQ_JPEG             = 140u, /**< JPEG sync interrupt                           */
+#endif
     NVIC_PERIPH_IRQ_SIZE                    /**< Count of peripheral Interrupts                */
 }   nvic_PeriphIrqList_t;
 
 
 /**
- * \brief Cortex-M IRQ list. The index is decremented by 1 to have StackPointer separated.
+ * \brief Cortex-M IRQ list. The index is exception number decremented by 1 to
+ *        have StackPointer separated (comments contain exception number).
  *
+ * \note  Secure and Non-secure HardFault share single vector (exception 3,
+ *        banked by security state). Exceptions 8 - 10 and 13 are reserved on
+ *        Cortex-M33.
  */
 typedef enum
 {
-    NVIC_CORE_IRQ_RESET              = 0u,  /**< 1 Reset vector                          */
-    NVIC_CORE_IRQ_NMI                = 1u,  /**< 2 Cortex-M4 Non Maskable Interrupt      */
-    NVIC_CORE_IRQ_SEC_HARDFAULT      = 2u,  /**< 3 Cortex-M4 Hard Fault Interrupt        */
-    NVIC_CORE_IRQ_NONSEC_HARDFAULT   = 3u,  /**< 4 Cortex-M4 Hard Fault Interrupt        */
-    NVIC_CORE_IRQ_MEMFAULT           = 4u,  /**< 5 Cortex-M4 Memory Management Interrupt */
-    NVIC_CORE_IRQ_BUSFAULT           = 5u,  /**< 6 Cortex-M4 Bus Fault Interrupt         */
-    NVIC_CORE_IRQ_USAGEFAULT         = 6u,  /**< 7 Cortex-M4 Usage Fault Interrupt       */
-    NVIC_CORE_IRQ_SECUREFAULT        = 7u,  /*!< 8  Secure Fault                         */
-    NVIC_CORE_IRQ_SVCALL             = 10u, /**< 11 Cortex-M4 SV Call Interrupt          */
-    NVIC_CORE_IRQ_DEBUGMONITOR       = 11u, /**< 12 Cortex-M4 Debug Monitor Interrupt    */
-    NVIC_CORE_IRQ_PENDSV             = 13u, /**< 14 Cortex-M4 Pend SV Interrupt          */
-    NVIC_CORE_IRQ_SYSTICK            = 14u, /**< 15 Cortex-M4 System Tick Interrupt      */
-    NVIC_CORE_IRQ_SIZE                      /**< 16 Count of core Interrupts             */
+    NVIC_CORE_IRQ_RESET              = 0u,  /**< 1 Reset vector                           */
+    NVIC_CORE_IRQ_NMI                = 1u,  /**< 2 Cortex-M33 Non Maskable Interrupt      */
+    NVIC_CORE_IRQ_HARDFAULT          = 2u,  /**< 3 Cortex-M33 Hard Fault Interrupt        */
+    NVIC_CORE_IRQ_MEMFAULT           = 3u,  /**< 4 Cortex-M33 Memory Management Interrupt */
+    NVIC_CORE_IRQ_BUSFAULT           = 4u,  /**< 5 Cortex-M33 Bus Fault Interrupt         */
+    NVIC_CORE_IRQ_USAGEFAULT         = 5u,  /**< 6 Cortex-M33 Usage Fault Interrupt       */
+    NVIC_CORE_IRQ_SECUREFAULT        = 6u,  /**< 7 Cortex-M33 Secure Fault Interrupt      */
+    NVIC_CORE_IRQ_SVCALL             = 10u, /**< 11 Cortex-M33 SV Call Interrupt          */
+    NVIC_CORE_IRQ_DEBUGMONITOR       = 11u, /**< 12 Cortex-M33 Debug Monitor Interrupt    */
+    NVIC_CORE_IRQ_PENDSV             = 13u, /**< 14 Cortex-M33 Pend SV Interrupt          */
+    NVIC_CORE_IRQ_SYSTICK            = 14u, /**< 15 Cortex-M33 System Tick Interrupt      */
+    NVIC_CORE_IRQ_SIZE                      /**< Count of core Interrupts (15 entries)    */
 }   nvic_CoreIrqList_t;
+
+
+/**
+ * \brief Fault status of the core (raw values of SCB fault registers).
+ *
+ * \note  Fault address registers are valid only if the related valid flag
+ *        (MMARVALID, BFARVALID) is set in CFSR.
+ */
+typedef struct
+{
+    uint32_t Cfsr;  /**< Configurable Fault Status Register (MMFSR, BFSR, UFSR) */
+    uint32_t Hfsr;  /**< HardFault Status Register                              */
+    uint32_t Mmfar; /**< MemManage Fault Address Register                       */
+    uint32_t Bfar;  /**< BusFault Address Register                              */
+}   nvic_FaultStatus_t;
 
 /* ========================== EXPORTED VARIABLES ============================ */
 

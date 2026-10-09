@@ -68,6 +68,12 @@ nvic_RequestState_t Nvic_Set_CoreIrq_Prio   (nvic_CoreIrqList_t irqId, nvic_IrqP
 nvic_RequestState_t Nvic_Get_CoreIrq_Prio   (nvic_CoreIrqList_t irqId, nvic_IrqPrio_t *irqPrio);
 ```
 
+### Faults and System Reset
+```c
+nvic_RequestState_t Nvic_Get_FaultStatus(nvic_FaultStatus_t * const faultStatus); /* CFSR, HFSR, MMFAR, BFAR (read only) */
+void                Nvic_Set_SystemReset(void);                                   /* SYSRESETREQ, does not return      */
+```
+
 ---
 
 ## Branch Strategy
