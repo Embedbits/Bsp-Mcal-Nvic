@@ -45,6 +45,13 @@ static void Ut_Nvic_UserDefaultHandler( void );
 /** Core IRQ index of reserved exception 7 (Cortex-M4, exception number - 1) */
 #define UT_NVIC_CORE_IRQ_RESERVED           ( (nvic_CoreIrqList_t)6u )
 
+/** Timer interrupt used by the tests (TIM2, TIM5 on MCUs without TIM2 - STM32F410) */
+#if defined(TIM2)
+    #define UT_NVIC_IRQ_TIMER               ( NVIC_PERIPH_IRQ_TIM2 )
+#else
+    #define UT_NVIC_IRQ_TIMER               ( NVIC_PERIPH_IRQ_TIM5 )
+#endif /* TIM2 */
+
 /* ============================== MACROS ==================================== */
 
 /** NVIC register index of the IRQ */
@@ -249,7 +256,7 @@ void Ut_Nvic_Deinit_RestoresDefaultHandlers( void )
 /**
  * \brief   Nvic_Set_PeriphIrq_Handler() stores the handler in the vector table.
  *
- * \details Sets user handler of TIM2 and reads it back.
+ * \details Sets user handler of the timer interrupt (TIM2, TIM5 without TIM2) and reads it back.
  *
  * \par Expected results
  * - NVIC_REQUEST_OK, handler reads back the user handler.
@@ -260,8 +267,8 @@ void Ut_Nvic_Set_PeriphIrq_Handler_StoresHandler( void )
 
     Nvic_Init();
 
-    TEST_ASSERT_EQUAL( NVIC_REQUEST_OK, Nvic_Set_PeriphIrq_Handler( NVIC_PERIPH_IRQ_TIM2, Ut_Nvic_UserHandler ) );
-    TEST_ASSERT_EQUAL( NVIC_REQUEST_OK, Nvic_Get_PeriphIrq_Handler( NVIC_PERIPH_IRQ_TIM2, &handler ) );
+    TEST_ASSERT_EQUAL( NVIC_REQUEST_OK, Nvic_Set_PeriphIrq_Handler( UT_NVIC_IRQ_TIMER, Ut_Nvic_UserHandler ) );
+    TEST_ASSERT_EQUAL( NVIC_REQUEST_OK, Nvic_Get_PeriphIrq_Handler( UT_NVIC_IRQ_TIMER, &handler ) );
 
     TEST_ASSERT_EQUAL_PTR( Ut_Nvic_UserHandler, handler );
 }
@@ -278,7 +285,7 @@ void Ut_Nvic_Set_PeriphIrq_Handler_StoresHandler( void )
 void Ut_Nvic_Set_PeriphIrq_Handler_InvalidArgs_ReturnsError( void )
 {
     TEST_ASSERT_EQUAL( NVIC_REQUEST_ERROR, Nvic_Set_PeriphIrq_Handler( NVIC_PERIPH_IRQ_SIZE, Ut_Nvic_UserHandler ) );
-    TEST_ASSERT_EQUAL( NVIC_REQUEST_ERROR, Nvic_Set_PeriphIrq_Handler( NVIC_PERIPH_IRQ_TIM2, NULL ) );
+    TEST_ASSERT_EQUAL( NVIC_REQUEST_ERROR, Nvic_Set_PeriphIrq_Handler( UT_NVIC_IRQ_TIMER, NULL ) );
 }
 
 
@@ -295,7 +302,7 @@ void Ut_Nvic_Get_PeriphIrq_Handler_InvalidArgs_ReturnsError( void )
     nvic_IsrCallback_t handler = NULL;
 
     TEST_ASSERT_EQUAL( NVIC_REQUEST_ERROR, Nvic_Get_PeriphIrq_Handler( NVIC_PERIPH_IRQ_SIZE, &handler ) );
-    TEST_ASSERT_EQUAL( NVIC_REQUEST_ERROR, Nvic_Get_PeriphIrq_Handler( NVIC_PERIPH_IRQ_TIM2, NULL ) );
+    TEST_ASSERT_EQUAL( NVIC_REQUEST_ERROR, Nvic_Get_PeriphIrq_Handler( UT_NVIC_IRQ_TIMER, NULL ) );
 }
 
 
@@ -394,7 +401,7 @@ void Ut_Nvic_Set_PeriphIrq_Prio_InvalidArgs_ReturnsErrorWithoutWrite( void )
 /**
  * \brief   Nvic_Get_PeriphIrq_Prio() reads priority from IP register.
  *
- * \details Presets IP byte of TIM2 to 9 << 4 and reads the priority.
+ * \details Presets IP byte of the timer interrupt (TIM2, TIM5 without TIM2) to 9 << 4 and reads the priority.
  *
  * \par Expected results
  * - NVIC_REQUEST_OK, priority 9.
@@ -403,9 +410,9 @@ void Ut_Nvic_Get_PeriphIrq_Prio_ReadsIp( void )
 {
     nvic_IrqPrio_t prio = 0u;
 
-    NVIC->IP[ NVIC_PERIPH_IRQ_TIM2 ] = (uint8_t)( 9u << UT_NVIC_PRIO_SHIFT );
+    NVIC->IP[ UT_NVIC_IRQ_TIMER ] = (uint8_t)( 9u << UT_NVIC_PRIO_SHIFT );
 
-    TEST_ASSERT_EQUAL( NVIC_REQUEST_OK, Nvic_Get_PeriphIrq_Prio( NVIC_PERIPH_IRQ_TIM2, &prio ) );
+    TEST_ASSERT_EQUAL( NVIC_REQUEST_OK, Nvic_Get_PeriphIrq_Prio( UT_NVIC_IRQ_TIMER, &prio ) );
     TEST_ASSERT_EQUAL_UINT32( 9u, prio );
 }
 
@@ -418,7 +425,7 @@ void Ut_Nvic_Get_PeriphIrq_Prio_ReadsIp( void )
  */
 void Ut_Nvic_Get_PeriphIrq_Prio_NullPtr_ReturnsError( void )
 {
-    TEST_ASSERT_EQUAL( NVIC_REQUEST_ERROR, Nvic_Get_PeriphIrq_Prio( NVIC_PERIPH_IRQ_TIM2, NULL ) );
+    TEST_ASSERT_EQUAL( NVIC_REQUEST_ERROR, Nvic_Get_PeriphIrq_Prio( UT_NVIC_IRQ_TIMER, NULL ) );
 }
 
 /* ====================== PERIPHERAL ENABLE / PENDING ======================= */
@@ -464,18 +471,18 @@ void Ut_Nvic_Set_PeriphIrq_Active_AllIrqs_WritesOwnBit( void )
 /**
  * \brief   Nvic_Set_PeriphIrq_Inactive() disables the IRQ in ICER register.
  *
- * \details Disables TIM2 IRQ.
+ * \details Disables the timer IRQ (TIM2, TIM5 without TIM2).
  *
  * \par Expected results
- * - NVIC_REQUEST_OK, ICER contains only TIM2 bit, ISER is not written.
+ * - NVIC_REQUEST_OK, ICER contains only the timer bit, ISER is not written.
  * - One DSB and one ISB instruction executed (IRQ disabled before return).
  */
 void Ut_Nvic_Set_PeriphIrq_Inactive_WritesIcerBitWithBarriers( void )
 {
-    TEST_ASSERT_EQUAL( NVIC_REQUEST_OK, Nvic_Set_PeriphIrq_Inactive( NVIC_PERIPH_IRQ_TIM2 ) );
+    TEST_ASSERT_EQUAL( NVIC_REQUEST_OK, Nvic_Set_PeriphIrq_Inactive( UT_NVIC_IRQ_TIMER ) );
 
-    TEST_ASSERT_EQUAL_HEX32( UT_NVIC_REG_MASK( NVIC_PERIPH_IRQ_TIM2 ), NVIC->ICER[ UT_NVIC_REG_IDX( NVIC_PERIPH_IRQ_TIM2 ) ] );
-    TEST_ASSERT_EQUAL_HEX32( 0u, NVIC->ISER[ UT_NVIC_REG_IDX( NVIC_PERIPH_IRQ_TIM2 ) ] );
+    TEST_ASSERT_EQUAL_HEX32( UT_NVIC_REG_MASK( UT_NVIC_IRQ_TIMER ), NVIC->ICER[ UT_NVIC_REG_IDX( UT_NVIC_IRQ_TIMER ) ] );
+    TEST_ASSERT_EQUAL_HEX32( 0u, NVIC->ISER[ UT_NVIC_REG_IDX( UT_NVIC_IRQ_TIMER ) ] );
 
     /* Interrupt is disabled before return (ARM recommended sequence) */
     TEST_ASSERT_EQUAL_UINT32( 1u, CmsisHost_Get_InstrCnt( CMSISHOST_INSTR_DSB ) );
