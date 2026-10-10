@@ -18,6 +18,14 @@ It exposes a unified API for all supported families to:
 - Support both peripheral interrupts and core system interrupts
 - Provide default handler management
 
+### STM32F7 specifics
+
+`Nvic_Init()` enables the Cortex-M7 instruction cache; the data cache is not enabled by the MCAL. With
+the data cache off the device errata ES0334 "Cortex-M7 data corruption when using Data cache
+configured in write-through" (Arm ID 1259864, silicon revision A) does not apply. An application
+enabling the data cache has to keep DMA buffers out of cached memory or maintain the cache, and has
+to avoid write-through memory on silicon revision A.
+
 ---
 
 ## Public API
