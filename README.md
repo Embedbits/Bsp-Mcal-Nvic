@@ -68,6 +68,22 @@ nvic_RequestState_t Nvic_Set_CoreIrq_Prio   (nvic_CoreIrqList_t irqId, nvic_IrqP
 nvic_RequestState_t Nvic_Get_CoreIrq_Prio   (nvic_CoreIrqList_t irqId, nvic_IrqPrio_t *irqPrio);
 ```
 
+### Faults and System Reset
+```c
+nvic_RequestState_t Nvic_Get_FaultStatus(nvic_FaultStatus_t * const faultStatus); /* CFSR, HFSR, MMFAR, BFAR (read only) */
+void                Nvic_Set_SystemReset(void);                                   /* SYSRESETREQ, does not return      */
+```
+
+---
+
+## STM32H7 Specifics
+
+- Cortex-M7 core, 4 priority bits, FPv5 double precision FPU enabled by `Nvic_Init`.
+- Instruction cache (L1 I-Cache) enabled by `Nvic_Init`, data cache stays disabled (DMA buffers need no cache maintenance).
+- Interrupt vector table in RAM (AXI SRAM, VTOR alignment 1024 B) - up to 163 peripheral interrupts (STM32H723 / H725 / H730 / H733 / H735).
+- `nvic_PeriphIrqList_t` covers all STM32H7 devices: names are the CMSIS `IRQn_Type` names without the `_IRQn` suffix, interrupts not available on the selected device are not defined. Classic STM32H7 (`STM32H7`) and STM32H7R/S (`STM32H7RS`) have different vector layouts.
+- Dual-core STM32H745 / H747 / H755 / H757: the module handles the Cortex-M7 core only.
+
 ---
 
 ## Branch Strategy
