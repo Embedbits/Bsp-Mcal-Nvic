@@ -439,7 +439,10 @@ void It_Nvic_Set_CoreIrq_Handler_SysTick_HandlerCalledPeriodically( void )
 
     TEST_ASSERT_EQUAL( RCC_REQUEST_OK, Rcc_Set_SysTickInterval( 1u ) );
 
-    for( volatile uint32_t loopIdx = 0u; ( IT_NVIC_SYSTICK_WAIT_LOOPS > loopIdx ) && ( IT_NVIC_SYSTICK_CNT > itNvic_SysTickCnt ); loopIdx++ )
+    for( volatile uint32_t loopIdx = 0u;
+         ( IT_NVIC_SYSTICK_WAIT_LOOPS > loopIdx ) &&
+         ( IT_NVIC_SYSTICK_CNT > itNvic_SysTickCnt );
+         loopIdx++ )
     {
         /* Wait for SysTick interrupts */
     }
@@ -517,7 +520,9 @@ void It_Nvic_Get_FaultStatus_NoFault_StatusRegistersCleared( void )
  */
 void It_Nvic_Set_SystemReset_ResetsMcu( void )
 {
-    if( 0u == IntegrationTesting_Get_Stage() )
+    const integrationTesting_Stage_t stage = IntegrationTesting_Get_Stage();
+
+    if( 0u == stage )
     {
         TEST_ASSERT_EQUAL( RCC_REQUEST_OK, Rcc_Set_ResetSourceClear() );
         IntegrationTesting_Set_ResetExpected();

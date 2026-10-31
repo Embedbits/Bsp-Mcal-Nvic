@@ -356,8 +356,15 @@ typedef enum
     NVIC_PERIPH_IRQ_I3C2_EV         = 131u, /**< I3C2 Event interrupt                          */
     NVIC_PERIPH_IRQ_I3C2_ER         = 132u, /**< I3C2 Error interrupt                          */
 #endif
-#if defined(COMP1)
-    NVIC_PERIPH_IRQ_COMP1          = 133u,  /**< Comparator 1 global interrupt                 */
+#if defined(COMP1) && \
+    defined(COMP2)
+    /** Shared comparator global interrupt (CMSIS COMP_IRQn): on device
+     *  lines that have both COMP1 and COMP2, vector 133 is the single
+     *  interrupt line for both comparators - the handler must check the
+     *  status of each comparator peripheral. */
+    NVIC_PERIPH_IRQ_COMP            = 133u,  /**< Shared COMP1/COMP2 comparator global interrupt */
+#elif defined(COMP1)
+    NVIC_PERIPH_IRQ_COMP1           = 133u,  /**< Comparator 1 global interrupt                 */
 #endif
 #if defined(DMA2D)
     NVIC_PERIPH_IRQ_DMA2D           = 134u,  /**< DMA2D global interrupt                          */
