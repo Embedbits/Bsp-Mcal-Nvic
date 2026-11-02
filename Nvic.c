@@ -87,6 +87,22 @@ static void Nvic_SysTick_DefaultHandler( void );
 #define NVIC_CPACR_FPU_FULL_ACCESS   ( ( NVIC_CPACR_FULL_ACCESS << NVIC_CPACR_CP10_POS ) | \
                                        ( NVIC_CPACR_FULL_ACCESS << NVIC_CPACR_CP11_POS ) )
 
+/* Sections of the vector tables (linker script). Mach-O objects of the host builds on macOS (unit tests)
+ * accept "segment,section" names only - the tables are not placed by a linker script there. */
+#if defined(__APPLE__)
+/** Section of the flash vector table */
+#define NVIC_FLASH_VECT_SECTION      "__DATA,__isr_vector"
+
+/** Section of the RAM vector table */
+#define NVIC_RAM_VECT_SECTION        "__DATA,__irqvect_ram"
+#else
+/** Section of the flash vector table */
+#define NVIC_FLASH_VECT_SECTION      ".isr_vector"
+
+/** Section of the RAM vector table */
+#define NVIC_RAM_VECT_SECTION        "._irqVectorTable_RAM"
+#endif
+
 /* =============================== MACROS =================================== */
 
 /* ========================== EXPORTED VARIABLES ============================ */
@@ -98,7 +114,7 @@ extern uint32_t _estack;
 
 /** Vector table located at the begin of FLASH memory. Used until VTOR is
  *  switched to RAM table by \ref Nvic_Init, index is exception number. */
-__attribute__ ((section(".isr_vector"))) const void* vector_table[] = {
+__attribute__ ((section( NVIC_FLASH_VECT_SECTION ))) const void* vector_table[] = {
     &_estack,                           /*  0 Initial Stack Pointer */
     StartUp_Handler,                    /*  1 Reset                 */
     Nvic_NMI_DefaultHandler,            /*  2 NMI                   */
@@ -118,7 +134,7 @@ __attribute__ ((section(".isr_vector"))) const void* vector_table[] = {
 };
 
 /** Custom vector table */
-__attribute__ ((section ("._irqVectorTable_RAM"), used))
+__attribute__ ((section( NVIC_RAM_VECT_SECTION ), used))
 static volatile nvic_IrqVectorTable_t   nvic_IrqVectTable
                                             = { 0u };
 
@@ -162,9 +178,30 @@ void Nvic_Init( void )
 
     Nvic_Config();
 
-/* FPU settings ------------------------------------------------------------*/
-#if (__FPU_PRESENT == 1) && (__FPU_USED == 1)
+    /* FPU settings - CP10 and CP11 full access */
+    Nvic_Set_FpuActive();
+}
+
+
+/**
+ * \brief Enables full access to the FPU (coprocessors CP10 and CP11).
+ *
+ * Uses no variables of the module: StartUp calls it as the first step after
+ * reset, before the global variables are initialized (their initialization may
+ * be compiled to library code using FPU registers); \ref Nvic_Init calls it too.
+ * The barriers make the access valid for the following instructions. Nothing is
+ * done when the build does not use the FPU.
+ */
+void Nvic_Set_FpuActive( void )
+{
+#if (__FPU_PRESENT == 1) && \
+    (__FPU_USED    == 1)
     SCB->CPACR |= NVIC_CPACR_FPU_FULL_ACCESS;  /* set CP10 and CP11 Full Access */
+
+    __DSB();
+    __ISB();
+#else
+    return;
 #endif
 }
 
