@@ -61,6 +61,14 @@ static void It_Nvic_SysTickHandler  ( void );
 /** Maximal count of wait loop iterations for SysTick interrupts (timeout) */
 #define IT_NVIC_SYSTICK_WAIT_LOOPS          ( 2000000u )
 
+/** CPACR value of CP10 and CP11 full access (FPU) */
+#define IT_NVIC_CPACR_FPU_FULL_ACCESS       ( ( 3u << 20u ) | ( 3u << 22u ) )
+
+/** Factors and exact product of the floating point check */
+#define IT_NVIC_FPU_FACTOR_A                ( 1.5f )
+#define IT_NVIC_FPU_FACTOR_B                ( 2.5f )
+#define IT_NVIC_FPU_PRODUCT                 ( 3.75f )
+
 /* ============================== MACROS ==================================== */
 
 /* ========================== LOCAL VARIABLES =============================== */
@@ -508,6 +516,34 @@ void It_Nvic_Get_FaultStatus_NoFault_StatusRegistersCleared( void )
 
 
 /**
+ * \brief   FPU on target is accessible after start-up and after Nvic_Set_FpuActive().
+ *
+ * \details Reads SCB_CPACR after start-up (StartUp enables the FPU before the global
+ *          variables are initialized, bugs AB#2277 / AB#2274), calls
+ *          Nvic_Set_FpuActive(), reads SCB_CPACR again and multiplies two volatile floats.
+ *
+ * \par Expected results
+ * - CP10 and CP11 full access after start-up and after the call.
+ * - 1.5 x 2.5 = 3.75 (exact in single precision).
+ */
+void It_Nvic_Set_FpuActive_FullAccessAndFloatResult( void )
+{
+    volatile float factorA = IT_NVIC_FPU_FACTOR_A;
+    volatile float factorB = IT_NVIC_FPU_FACTOR_B;
+    float          product = 0.0f;
+
+    TEST_ASSERT_EQUAL_HEX32( IT_NVIC_CPACR_FPU_FULL_ACCESS, SCB->CPACR & IT_NVIC_CPACR_FPU_FULL_ACCESS );
+
+    Nvic_Set_FpuActive();
+
+    TEST_ASSERT_EQUAL_HEX32( IT_NVIC_CPACR_FPU_FULL_ACCESS, SCB->CPACR & IT_NVIC_CPACR_FPU_FULL_ACCESS );
+
+    product = factorA * factorB;
+    TEST_ASSERT_TRUE( IT_NVIC_FPU_PRODUCT == product );
+}
+
+
+/**
  * \brief   Nvic_Set_SystemReset() resets the MCU.
  *
  * \details
@@ -520,7 +556,9 @@ void It_Nvic_Get_FaultStatus_NoFault_StatusRegistersCleared( void )
  */
 void It_Nvic_Set_SystemReset_ResetsMcu( void )
 {
-    if( 0u == IntegrationTesting_Get_Stage() )
+    const integrationTesting_Stage_t testStage = IntegrationTesting_Get_Stage();
+
+    if( 0u == testStage )
     {
         TEST_ASSERT_EQUAL( RCC_REQUEST_OK, Rcc_Set_ResetSourceClear() );
 
