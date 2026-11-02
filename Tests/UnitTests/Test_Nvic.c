@@ -36,6 +36,9 @@ static void Ut_Nvic_UserDefaultHandler( void );
 /** Priority grouping 4 (4 bits pre-emption, 0 bits sub-priority) - PRIGROUP value */
 #define UT_NVIC_PRIGROUP_4                  ( 3u )
 
+/** CPACR value of CP10 and CP11 full access (FPU) */
+#define UT_NVIC_CPACR_FPU_FULL_ACCESS       ( ( 3u << 20u ) | ( 3u << 22u ) )
+
 /** Index of SHPR byte of SysTick (exception 15 - 4) */
 #define UT_NVIC_SHPR_IDX_SYSTICK            ( 11u )
 
@@ -116,6 +119,32 @@ void Ut_Nvic_Init_SetsVectorTableAndPriorityGrouping( void )
     TEST_ASSERT_EQUAL_HEX32( Nvic_Get_StackPointerAddr(), SCB->VTOR );
     TEST_ASSERT_EQUAL_HEX32( UT_NVIC_PRIGROUP_4 << SCB_AIRCR_PRIGROUP_Pos, SCB->AIRCR & SCB_AIRCR_PRIGROUP_Msk );
     TEST_ASSERT_EQUAL_UINT32( 1u, CmsisHost_Get_InstrCnt( CMSISHOST_INSTR_DSB ) );  /* VTOR write completed */
+}
+
+
+/**
+ * \brief   Nvic_Set_FpuActive() enables full access to the FPU when the build uses it (bug AB#2276).
+ *
+ * \details Calls the function. The host build does not use an FPU (__FPU_USED = 0).
+ *
+ * \par Expected results
+ * - FPU used: CPACR CP10 / CP11 = full access, one DSB and one ISB executed.
+ * - FPU not used (host build): CPACR unchanged (0), no DSB / ISB executed.
+ */
+void Ut_Nvic_Set_FpuActive_FullAccessWhenFpuUsed( void )
+{
+    Nvic_Set_FpuActive();
+
+#if (__FPU_PRESENT == 1) && \
+    (__FPU_USED    == 1)
+    TEST_ASSERT_EQUAL_HEX32( UT_NVIC_CPACR_FPU_FULL_ACCESS, SCB->CPACR & UT_NVIC_CPACR_FPU_FULL_ACCESS );
+    TEST_ASSERT_EQUAL_UINT32( 1u, CmsisHost_Get_InstrCnt( CMSISHOST_INSTR_DSB ) );
+    TEST_ASSERT_EQUAL_UINT32( 1u, CmsisHost_Get_InstrCnt( CMSISHOST_INSTR_ISB ) );
+#else
+    TEST_ASSERT_EQUAL_HEX32( 0u, SCB->CPACR );
+    TEST_ASSERT_EQUAL_UINT32( 0u, CmsisHost_Get_InstrCnt( CMSISHOST_INSTR_DSB ) );
+    TEST_ASSERT_EQUAL_UINT32( 0u, CmsisHost_Get_InstrCnt( CMSISHOST_INSTR_ISB ) );
+#endif
 }
 
 
