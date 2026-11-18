@@ -74,6 +74,14 @@ static void Nvic_SysTick_DefaultHandler( void );
 /** Exception number of the first entry of SCB SHPR registers (MemManage fault) */
 #define NVIC_SHPR_FIRST_EXC          ( 4u )
 
+/** System handler priority registers of the SCB - CMSIS name SHPR (core_cm7.h) / SHP (core_cm4.h, Cortex-M4 of the
+ *  dual-core lines) */
+#if (__CORTEX_M == 7U)
+#define NVIC_SCB_SHPR                ( SCB->SHPR )
+#else
+#define NVIC_SCB_SHPR                ( SCB->SHP )
+#endif
+
 /** Full access value of coprocessor access field (2 bits per coprocessor) */
 #define NVIC_CPACR_FULL_ACCESS       ( 3u )
 
@@ -87,6 +95,22 @@ static void Nvic_SysTick_DefaultHandler( void );
 #define NVIC_CPACR_FPU_FULL_ACCESS   ( ( NVIC_CPACR_FULL_ACCESS << NVIC_CPACR_CP10_POS ) | \
                                        ( NVIC_CPACR_FULL_ACCESS << NVIC_CPACR_CP11_POS ) )
 
+/* Sections of the vector tables (linker script). Mach-O objects of the host builds on macOS (unit tests)
+ * accept "segment,section" names only - the tables are not placed by a linker script there. */
+#if defined(__APPLE__)
+/** Section of the flash vector table */
+#define NVIC_FLASH_VECT_SECTION      "__DATA,__isr_vector"
+
+/** Section of the RAM vector table */
+#define NVIC_RAM_VECT_SECTION        "__DATA,__irqvect_ram"
+#else
+/** Section of the flash vector table */
+#define NVIC_FLASH_VECT_SECTION      ".isr_vector"
+
+/** Section of the RAM vector table */
+#define NVIC_RAM_VECT_SECTION        "._irqVectorTable_RAM"
+#endif
+
 /* =============================== MACROS =================================== */
 
 /* ========================== EXPORTED VARIABLES ============================ */
@@ -98,7 +122,7 @@ extern uint32_t _estack;
 
 /** Vector table located at the begin of FLASH memory. Used until VTOR is
  *  switched to RAM table by \ref Nvic_Init, index is exception number. */
-__attribute__ ((section(".isr_vector"))) const void* vector_table[] = {
+__attribute__ ((section( NVIC_FLASH_VECT_SECTION ))) const void* vector_table[] = {
     &_estack,                           /*  0 Initial Stack Pointer */
     StartUp_Handler,                    /*  1 Reset                 */
     Nvic_NMI_DefaultHandler,            /*  2 NMI                   */
@@ -118,7 +142,7 @@ __attribute__ ((section(".isr_vector"))) const void* vector_table[] = {
 };
 
 /** Custom vector table */
-__attribute__ ((section ("._irqVectorTable_RAM"), used))
+__attribute__ ((section( NVIC_RAM_VECT_SECTION ), used))
 static volatile nvic_IrqVectorTable_t   nvic_IrqVectTable
                                             = { 0u };
 
@@ -153,12 +177,16 @@ nvic_ModuleVersion_t Nvic_Get_ModuleVersion( void )
  * to AppMain layer.
  *
  * Initializes core and peripheral vector tables, switches VTOR to the RAM
- * vector table, configures priority grouping, enables FPU access (FPv5
- * double precision FPU of Cortex-M7) and the Cortex-M7 instruction cache.
+ * vector table, configures priority grouping, enables FPU access (FPv5-D16 of
+ * the Cortex-M7, FPv4-SP-D16 of the Cortex-M4) and the Cortex-M7 instruction
+ * cache.
  *
  * \note The instruction cache (L1 I-Cache) is enabled - STM32H7 has no ART
  *       accelerator on the AXI FLASH interface. The data cache stays disabled,
- *       so DMA buffers need no cache maintenance.
+ *       so DMA buffers need no cache maintenance. The Cortex-M4 of the
+ *       dual-core lines (project of the Cortex-M4 core) has no L1 cache - the
+ *       cache is enabled only when the CMSIS device header reports it
+ *       (__ICACHE_PRESENT).
  */
 void Nvic_Init( void )
 {
@@ -167,14 +195,37 @@ void Nvic_Init( void )
 
     Nvic_Config();
 
-/* FPU settings ------------------------------------------------------------*/
+    /* FPU settings - CP10 and CP11 full access */
+    Nvic_Set_FpuActive();
+
+    /* Instruction cache - invalidated and enabled (no action if already enabled) */
+#if defined(__ICACHE_PRESENT) && \
+    (__ICACHE_PRESENT == 1U)
+    SCB_EnableICache();
+#endif
+}
+
+
+/**
+ * \brief Enables full access to the FPU (coprocessors CP10 and CP11).
+ *
+ * Uses no variables of the module: StartUp calls it as the first step after
+ * reset, before the global variables are initialized (their initialization may
+ * be compiled to library code using FPU registers); \ref Nvic_Init calls it too.
+ * The barriers make the access valid for the following instructions. Nothing is
+ * done when the build does not use the FPU.
+ */
+void Nvic_Set_FpuActive( void )
+{
 #if (__FPU_PRESENT == 1) && \
     (__FPU_USED    == 1)
     SCB->CPACR |= NVIC_CPACR_FPU_FULL_ACCESS;  /* set CP10 and CP11 Full Access */
-#endif
 
-    /* Instruction cache - invalidated and enabled (no action if already enabled) */
-    SCB_EnableICache();
+    __DSB();
+    __ISB();
+#else
+    return;
+#endif
 }
 
 
@@ -419,6 +470,50 @@ nvic_RequestState_t Nvic_Set_PeriphIrq_Inactive( nvic_PeriphIrqList_t irqId )
 
 
 /**
+ * \brief Peripheral interrupt vector activation state getter routine
+ *
+ * Reads whether the interrupt vector is activated (NVIC_ISERx bit), for example to find out whether another module
+ * uses an interrupt line shared by two peripherals.
+ *
+ * \param irqId     [in]: Interrupt vector identification
+ * \param irqState [out]: Pointer to store \ref NVIC_FUNCTION_ACTIVE when the vector is activated,
+ *                        \ref NVIC_FUNCTION_INACTIVE otherwise. Must not be NULL.
+ *
+ * \return Processing request state. If request executed successfully returns "OK",
+ *         otherwise returns error.
+ */
+nvic_RequestState_t Nvic_Get_PeriphIrq_State( nvic_PeriphIrqList_t irqId, nvic_FunctionState_t *irqState )
+{
+    nvic_RequestState_t returnState = NVIC_REQUEST_ERROR;
+
+    if( ( NVIC_PERIPH_IRQ_SIZE >  irqId    ) &&
+        ( NVIC_NULL_PTR        != irqState )    )
+    {
+        const uint32_t irqRegOffset = ( (uint32_t)irqId ) >> NVIC_IRQ_REG_IDX_SHIFT;
+        const uint32_t irqMask      = NVIC_IRQ_REG_BIT << ( ( (uint32_t)irqId ) & NVIC_IRQ_REG_BIT_MASK );
+        const uint32_t regValue     = NVIC->ISER[ irqRegOffset ] & irqMask;
+
+        if( 0u != regValue )
+        {
+            *irqState = NVIC_FUNCTION_ACTIVE;
+        }
+        else
+        {
+            *irqState = NVIC_FUNCTION_INACTIVE;
+        }
+
+        returnState = NVIC_REQUEST_OK;
+    }
+    else
+    {
+        returnState = NVIC_REQUEST_ERROR;
+    }
+
+    return ( returnState );
+}
+
+
+/**
  * \brief Peripheral interrupt pending bit setter
  *
  * User can activate or deactivate pending state of interrupt vector.
@@ -590,7 +685,7 @@ nvic_RequestState_t Nvic_Set_CoreIrq_Prio( nvic_CoreIrqList_t irqId, nvic_IrqPri
     {
         const uint32_t shprIdx = ( (uint32_t)irqId + NVIC_CORE_IRQ_EXC_OFFSET ) - NVIC_SHPR_FIRST_EXC;
 
-        SCB->SHPR[ shprIdx ] = (uint8_t)( irqPrio << NVIC_PRIO_SHIFT );
+        NVIC_SCB_SHPR[ shprIdx ] = (uint8_t)( irqPrio << NVIC_PRIO_SHIFT );
 
         returnState = NVIC_REQUEST_OK;
     }
@@ -628,7 +723,7 @@ nvic_RequestState_t Nvic_Get_CoreIrq_Prio( nvic_CoreIrqList_t irqId, nvic_IrqPri
     {
         const uint32_t shprIdx = ( (uint32_t)irqId + NVIC_CORE_IRQ_EXC_OFFSET ) - NVIC_SHPR_FIRST_EXC;
 
-        *irqPrio = (nvic_IrqPrio_t)( (uint32_t)SCB->SHPR[ shprIdx ] >> NVIC_PRIO_SHIFT );
+        *irqPrio = (nvic_IrqPrio_t)( (uint32_t)NVIC_SCB_SHPR[ shprIdx ] >> NVIC_PRIO_SHIFT );
 
         returnState = NVIC_REQUEST_OK;
     }

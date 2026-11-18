@@ -33,6 +33,7 @@ nvic_ModuleVersion_t        Nvic_Get_ModuleVersion      ( void );
 void                        Nvic_Init                   ( void );
 void                        Nvic_Deinit                 ( void );
 void                        Nvic_Task                   ( void );
+void                        Nvic_Set_FpuActive          ( void );
 
 uint32_t                    Nvic_Get_StackPointerAddr   ( void );
 
@@ -46,6 +47,7 @@ nvic_RequestState_t         Nvic_Get_PeriphIrq_Prio     ( nvic_PeriphIrqList_t i
 
 nvic_RequestState_t         Nvic_Set_PeriphIrq_Active   ( nvic_PeriphIrqList_t irqId );
 nvic_RequestState_t         Nvic_Set_PeriphIrq_Inactive ( nvic_PeriphIrqList_t irqId );
+nvic_RequestState_t         Nvic_Get_PeriphIrq_State    ( nvic_PeriphIrqList_t irqId, nvic_FunctionState_t *irqState );
 
 nvic_RequestState_t         Nvic_Set_PeriphIrq_Pending  ( nvic_PeriphIrqList_t irqId, nvic_IrqFlag_t irqFlag );
 nvic_RequestState_t         Nvic_Get_PeriphIrq_Pending  ( nvic_PeriphIrqList_t irqId, nvic_IrqFlag_t *irqFlag );

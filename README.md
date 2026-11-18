@@ -54,6 +54,7 @@ nvic_RequestState_t Nvic_Get_PeriphIrq_Prio    (nvic_PeriphIrqList_t irqId, nvic
 
 nvic_RequestState_t Nvic_Set_PeriphIrq_Active  (nvic_PeriphIrqList_t irqId);
 nvic_RequestState_t Nvic_Set_PeriphIrq_Inactive(nvic_PeriphIrqList_t irqId);
+nvic_RequestState_t Nvic_Get_PeriphIrq_State   (nvic_PeriphIrqList_t irqId, nvic_FunctionState_t *irqState);
 
 nvic_RequestState_t Nvic_Set_PeriphIrq_Pending (nvic_PeriphIrqList_t irqId, nvic_IrqFlag_t irqFlag);
 nvic_RequestState_t Nvic_Get_PeriphIrq_Pending (nvic_PeriphIrqList_t irqId, nvic_IrqFlag_t *irqFlag);
@@ -78,11 +79,11 @@ void                Nvic_Set_SystemReset(void);                                 
 
 ## STM32H7 Specifics
 
-- Cortex-M7 core, 4 priority bits, FPv5 double precision FPU enabled by `Nvic_Init`.
-- Instruction cache (L1 I-Cache) enabled by `Nvic_Init`, data cache stays disabled (DMA buffers need no cache maintenance).
+- Cortex-M7 core (FPv5 double precision FPU), Cortex-M4 core (FPv4 single precision FPU) in the project of the Cortex-M4 of a dual-core line; 4 priority bits, FPU enabled by `Nvic_Init`.
+- Instruction cache (L1 I-Cache) enabled by `Nvic_Init`, data cache stays disabled (DMA buffers need no cache maintenance). Cortex-M7 only - the Cortex-M4 has no L1 cache (`__ICACHE_PRESENT` of the CMSIS device header).
 - Interrupt vector table in RAM (AXI SRAM, VTOR alignment 1024 B) - up to 163 peripheral interrupts (STM32H723 / H725 / H730 / H733 / H735).
 - `nvic_PeriphIrqList_t` covers all STM32H7 devices: names are the CMSIS `IRQn_Type` names without the `_IRQn` suffix, interrupts not available on the selected device are not defined. Classic STM32H7 (`STM32H7`) and STM32H7R/S (`STM32H7RS`) have different vector layouts.
-- Dual-core STM32H745 / H747 / H755 / H757: the module handles the Cortex-M7 core only.
+- Dual-core STM32H745 / H747 / H755 / H757: every core has its own project, the module is compiled for the core of the project (`CORE_CM7` / `CORE_CM4`), the vector table of a core is in the RAM of its project.
 
 ---
 

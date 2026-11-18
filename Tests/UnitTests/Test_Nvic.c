@@ -36,11 +36,21 @@ static void Ut_Nvic_UserDefaultHandler( void );
 /** Priority grouping 4 (4 bits pre-emption, 0 bits sub-priority) - PRIGROUP value */
 #define UT_NVIC_PRIGROUP_4                  ( 3u )
 
+/** CPACR value of CP10 and CP11 full access (FPU) */
+#define UT_NVIC_CPACR_FPU_FULL_ACCESS       ( ( 3u << 20u ) | ( 3u << 22u ) )
+
 /** Index of SHPR byte of SysTick (exception 15 - 4) */
 #define UT_NVIC_SHPR_IDX_SYSTICK            ( 11u )
 
 /** Index of SHPR byte of MemManage fault (exception 4 - 4) */
 #define UT_NVIC_SHPR_IDX_MEMFAULT           ( 0u )
+
+/** System handler priority registers of the SCB - CMSIS name SHPR (core_cm7.h) / SHP (core_cm4.h) */
+#if (__CORTEX_M == 7U)
+#define UT_NVIC_SCB_SHPR                    ( SCB->SHPR )
+#else
+#define UT_NVIC_SCB_SHPR                    ( SCB->SHP )
+#endif
 
 /** Core IRQ index of reserved exception 7 (Cortex-M7, exception number - 1) */
 #define UT_NVIC_CORE_IRQ_RESERVED           ( (nvic_CoreIrqList_t)6u )
@@ -140,13 +150,42 @@ void Ut_Nvic_Task_NoRegisterAccess( void )
  */
 void Ut_Nvic_Init_SetsVectorTableAndPriorityGrouping( void )
 {
+#if defined(__ICACHE_PRESENT) && \
+    (__ICACHE_PRESENT == 1U)
     SCB->CCR = SCB_CCR_IC_Msk;
+#endif
 
     Nvic_Init();
 
     TEST_ASSERT_EQUAL_HEX32( Nvic_Get_StackPointerAddr(), SCB->VTOR );
     TEST_ASSERT_EQUAL_HEX32( UT_NVIC_PRIGROUP_4 << SCB_AIRCR_PRIGROUP_Pos, SCB->AIRCR & SCB_AIRCR_PRIGROUP_Msk );
     TEST_ASSERT_EQUAL_UINT32( 1u, CmsisHost_Get_InstrCnt( CMSISHOST_INSTR_DSB ) );  /* VTOR write completed */
+}
+
+
+/**
+ * \brief   Nvic_Set_FpuActive() enables full access to the FPU when the build uses it (bug AB#2273).
+ *
+ * \details Calls the function. The host build does not use an FPU (__FPU_USED = 0).
+ *
+ * \par Expected results
+ * - FPU used: CPACR CP10 / CP11 = full access, one DSB and one ISB executed.
+ * - FPU not used (host build): CPACR unchanged (0), no DSB / ISB executed.
+ */
+void Ut_Nvic_Set_FpuActive_FullAccessWhenFpuUsed( void )
+{
+    Nvic_Set_FpuActive();
+
+#if (__FPU_PRESENT == 1) && \
+    (__FPU_USED    == 1)
+    TEST_ASSERT_EQUAL_HEX32( UT_NVIC_CPACR_FPU_FULL_ACCESS, SCB->CPACR & UT_NVIC_CPACR_FPU_FULL_ACCESS );
+    TEST_ASSERT_EQUAL_UINT32( 1u, CmsisHost_Get_InstrCnt( CMSISHOST_INSTR_DSB ) );
+    TEST_ASSERT_EQUAL_UINT32( 1u, CmsisHost_Get_InstrCnt( CMSISHOST_INSTR_ISB ) );
+#else
+    TEST_ASSERT_EQUAL_HEX32( 0u, SCB->CPACR );
+    TEST_ASSERT_EQUAL_UINT32( 0u, CmsisHost_Get_InstrCnt( CMSISHOST_INSTR_DSB ) );
+    TEST_ASSERT_EQUAL_UINT32( 0u, CmsisHost_Get_InstrCnt( CMSISHOST_INSTR_ISB ) );
+#endif
 }
 
 
@@ -158,9 +197,12 @@ void Ut_Nvic_Init_SetsVectorTableAndPriorityGrouping( void )
  * \par Expected results
  * - CCR.IC = 1, CCR.DC = 0.
  * - I-Cache invalidated before enabling (barriers DSB / ISB executed).
+ * - Core without instruction cache (Cortex-M4 of the dual-core lines): test ignored.
  */
 void Ut_Nvic_Init_InstructionCacheEnabled( void )
 {
+#if defined(__ICACHE_PRESENT) && \
+    (__ICACHE_PRESENT == 1U)
     SCB->CCR = 0u;
 
     Nvic_Init();
@@ -168,6 +210,9 @@ void Ut_Nvic_Init_InstructionCacheEnabled( void )
     TEST_ASSERT_EQUAL_HEX32( SCB_CCR_IC_Msk, SCB->CCR & ( SCB_CCR_IC_Msk | SCB_CCR_DC_Msk ) );
     TEST_ASSERT_TRUE( 3u < CmsisHost_Get_InstrCnt( CMSISHOST_INSTR_DSB ) );
     TEST_ASSERT_TRUE( 2u < CmsisHost_Get_InstrCnt( CMSISHOST_INSTR_ISB ) );
+#else
+    TEST_IGNORE_MESSAGE( "Core without instruction cache" );
+#endif
 }
 
 
@@ -500,6 +545,53 @@ void Ut_Nvic_Set_PeriphIrq_ActiveInactive_InvalidIrq_ReturnsError( void )
 
 
 /**
+ * \brief   Nvic_Get_PeriphIrq_State() reads the enable bit of the IRQ.
+ *
+ * \details Activates USART1 by Nvic_Set_PeriphIrq_Active() and reads the state of USART1 and of the next IRQ in the
+ *          same register, then clears the ISER register (plain memory of RegMem) and reads USART1 again.
+ *
+ * \par Expected results
+ * - USART1 activated: NVIC_FUNCTION_ACTIVE; next IRQ: NVIC_FUNCTION_INACTIVE.
+ * - ISER cleared: USART1 NVIC_FUNCTION_INACTIVE.
+ */
+void Ut_Nvic_Get_PeriphIrq_State_ReadsIserBit( void )
+{
+    nvic_FunctionState_t irqState = NVIC_FUNCTION_INACTIVE;
+
+    TEST_ASSERT_EQUAL( NVIC_REQUEST_OK, Nvic_Set_PeriphIrq_Active( NVIC_PERIPH_IRQ_USART1 ) );
+
+    TEST_ASSERT_EQUAL( NVIC_REQUEST_OK, Nvic_Get_PeriphIrq_State( NVIC_PERIPH_IRQ_USART1, &irqState ) );
+    TEST_ASSERT_EQUAL( NVIC_FUNCTION_ACTIVE, irqState );
+
+    /* Neighbour IRQ in the same register is not activated */
+    TEST_ASSERT_EQUAL( NVIC_REQUEST_OK,
+                       Nvic_Get_PeriphIrq_State( (nvic_PeriphIrqList_t)( NVIC_PERIPH_IRQ_USART1 + 1u ), &irqState ) );
+    TEST_ASSERT_EQUAL( NVIC_FUNCTION_INACTIVE, irqState );
+
+    NVIC->ISER[ UT_NVIC_REG_IDX( NVIC_PERIPH_IRQ_USART1 ) ] = 0u;
+    TEST_ASSERT_EQUAL( NVIC_REQUEST_OK, Nvic_Get_PeriphIrq_State( NVIC_PERIPH_IRQ_USART1, &irqState ) );
+    TEST_ASSERT_EQUAL( NVIC_FUNCTION_INACTIVE, irqState );
+}
+
+
+/**
+ * \brief   Nvic_Get_PeriphIrq_State() rejects invalid arguments.
+ *
+ * \details Calls the function with IRQ out of range and with NULL output pointer.
+ *
+ * \par Expected results
+ * - NVIC_REQUEST_ERROR in both cases.
+ */
+void Ut_Nvic_Get_PeriphIrq_State_InvalidArgs_ReturnsError( void )
+{
+    nvic_FunctionState_t irqState = NVIC_FUNCTION_INACTIVE;
+
+    TEST_ASSERT_EQUAL( NVIC_REQUEST_ERROR, Nvic_Get_PeriphIrq_State( NVIC_PERIPH_IRQ_SIZE, &irqState ) );
+    TEST_ASSERT_EQUAL( NVIC_REQUEST_ERROR, Nvic_Get_PeriphIrq_State( NVIC_PERIPH_IRQ_USART1, NULL ) );
+}
+
+
+/**
  * \brief   Nvic_Set_PeriphIrq_Pending() with active flag sets pending bit.
  *
  * \details Sets EXTI0 IRQ pending.
@@ -658,7 +750,7 @@ void Ut_Nvic_Set_CoreIrq_Prio_SysTick_WritesShpr( void )
 {
     TEST_ASSERT_EQUAL( NVIC_REQUEST_OK, Nvic_Set_CoreIrq_Prio( NVIC_CORE_IRQ_SYSTICK, 3u ) );
 
-    TEST_ASSERT_EQUAL_HEX8( 3u << UT_NVIC_PRIO_SHIFT, SCB->SHPR[ UT_NVIC_SHPR_IDX_SYSTICK ] );
+    TEST_ASSERT_EQUAL_HEX8( 3u << UT_NVIC_PRIO_SHIFT, UT_NVIC_SCB_SHPR[ UT_NVIC_SHPR_IDX_SYSTICK ] );
 }
 
 
@@ -674,7 +766,7 @@ void Ut_Nvic_Set_CoreIrq_Prio_MemFault_WritesFirstShpr( void )
 {
     TEST_ASSERT_EQUAL( NVIC_REQUEST_OK, Nvic_Set_CoreIrq_Prio( NVIC_CORE_IRQ_MEMFAULT, UT_NVIC_PRIO_MAX ) );
 
-    TEST_ASSERT_EQUAL_HEX8( UT_NVIC_PRIO_MAX << UT_NVIC_PRIO_SHIFT, SCB->SHPR[ UT_NVIC_SHPR_IDX_MEMFAULT ] );
+    TEST_ASSERT_EQUAL_HEX8( UT_NVIC_PRIO_MAX << UT_NVIC_PRIO_SHIFT, UT_NVIC_SCB_SHPR[ UT_NVIC_SHPR_IDX_MEMFAULT ] );
 }
 
 
@@ -699,7 +791,7 @@ void Ut_Nvic_Set_CoreIrq_Prio_FixedPrioException_ReturnsError( void )
 
     for( uint32_t shprIdx = 0u; UT_NVIC_SHPR_IDX_SYSTICK >= shprIdx; shprIdx++ )
     {
-        TEST_ASSERT_EQUAL_HEX8( 0u, SCB->SHPR[ shprIdx ] );
+        TEST_ASSERT_EQUAL_HEX8( 0u, UT_NVIC_SCB_SHPR[ shprIdx ] );
     }
 }
 
@@ -718,7 +810,7 @@ void Ut_Nvic_Get_CoreIrq_Prio_ReadsShpr( void )
 {
     nvic_IrqPrio_t prio = 0u;
 
-    SCB->SHPR[ UT_NVIC_SHPR_IDX_SYSTICK ] = (uint8_t)( 7u << UT_NVIC_PRIO_SHIFT );
+    UT_NVIC_SCB_SHPR[ UT_NVIC_SHPR_IDX_SYSTICK ] = (uint8_t)( 7u << UT_NVIC_PRIO_SHIFT );
 
     TEST_ASSERT_EQUAL( NVIC_REQUEST_OK, Nvic_Get_CoreIrq_Prio( NVIC_CORE_IRQ_SYSTICK, &prio ) );
     TEST_ASSERT_EQUAL_UINT32( 7u, prio );
