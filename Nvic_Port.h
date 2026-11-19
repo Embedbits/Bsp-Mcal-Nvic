@@ -33,6 +33,7 @@ nvic_ModuleVersion_t        Nvic_Get_ModuleVersion      ( void );
 void                        Nvic_Init                   ( void );
 void                        Nvic_Deinit                 ( void );
 void                        Nvic_Task                   ( void );
+void                        Nvic_Set_FpuActive          ( void );
 
 uint32_t                    Nvic_Get_StackPointerAddr   ( void );
 
